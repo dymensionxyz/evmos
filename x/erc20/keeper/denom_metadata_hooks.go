@@ -21,7 +21,7 @@ func NewERC20ContractRegistrationHook(erc20Keeper Keeper) ERC20BankContractRegis
 
 func (e ERC20BankContractRegistrationHook) AfterDenomMetadataCreation(ctx sdk.Context, newDenomMetadata banktypes.Metadata) error {
 	// only deploy for IBC denom.
-	if strings.HasPrefix(strings.ToLower(newDenomMetadata.Base), "ibc/") {
+	if !strings.HasPrefix(strings.ToLower(newDenomMetadata.Base), "ibc/") {
 		return nil
 	}
 
