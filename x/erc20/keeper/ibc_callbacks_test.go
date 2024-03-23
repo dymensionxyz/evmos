@@ -66,16 +66,16 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 	)
 
 	testCases := []struct {
-		name             string
-		malleate         func()
-		ackSuccess       bool
-		receiver         sdk.AccAddress
-		expErc20s        *big.Int
-		expCoins         sdk.Coins
-		checkBalances    bool
-		disableERC20     bool
-		disableTokenPair bool
-		deleteERC20Token string
+		name               string
+		malleate           func()
+		ackSuccess         bool
+		receiver           sdk.AccAddress
+		expErc20s          *big.Int
+		expCoins           sdk.Coins
+		checkBalances      bool
+		disableERC20       bool
+		disableTokenPair   bool
+		erc20TokenToDelete string
 	}{
 		{
 			name: "error - non ics-20 packet",
@@ -256,12 +256,12 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 				bz := transfertypes.ModuleCdc.MustMarshalJSON(&transfer)
 				packet = channeltypes.NewPacket(bz, 100, transfertypes.PortID, sourceChannel, transfertypes.PortID, evmosChannel, timeoutHeight, 0)
 			},
-			ackSuccess:       false,
-			receiver:         secpAddr,
-			expErc20s:        big.NewInt(0),
-			expCoins:         coins,
-			checkBalances:    true,
-			deleteERC20Token: "0x80b5a32E4F032B2a058b4F29EC95EEfEEB87aDcd",
+			ackSuccess:         false,
+			receiver:           secpAddr,
+			expErc20s:          big.NewInt(0),
+			expCoins:           coins,
+			checkBalances:      true,
+			erc20TokenToDelete: "0x80b5a32E4F032B2a058b4F29EC95EEfEEB87aDcd",
 		},
 		{
 			name: "ibc conversion - sender == receiver and from evm chain",
@@ -389,8 +389,9 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 				suite.Require().NoError(err)
 			}
 
-			if tc.deleteERC20Token != "" {
-				suite.app.Erc20Keeper.DeleteERC20Map(suite.ctx, common.HexToAddress(tc.deleteERC20Token))
+			// so we can test the case where the ERC20 token was not registered prior to the IBC transfer
+			if tc.erc20TokenToDelete != "" {
+				suite.app.Erc20Keeper.DeleteERC20Map(suite.ctx, common.HexToAddress(tc.erc20TokenToDelete))
 			}
 
 			// Perform IBC callback
