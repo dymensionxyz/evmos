@@ -33,7 +33,7 @@ func (k Keeper) RegisterCoin(
 	// Check if ERC20 is enabled
 	if !k.IsERC20Enabled(ctx) {
 		return nil, errorsmod.Wrap(
-			types.ErrERC20Disabled, "ERC20 is disabled",
+			types.ErrERC20Disabled, "erc20 is disabled",
 		)
 	}
 	// Check if denomination is already registered
@@ -42,6 +42,10 @@ func (k Keeper) RegisterCoin(
 			types.ErrTokenPairAlreadyExists, "coin denomination already registered: %s", coinMetadata.Name,
 		)
 	}
+
+	// Here we could (and we did) check if the coin exists by checking the total supply,
+	// but that might not be the best way to check if the coin exists. It's better to check
+	// if the coin is registered in the bank module store.
 
 	if err := k.verifyMetadata(ctx, coinMetadata); err != nil {
 		return nil, errorsmod.Wrapf(

@@ -248,7 +248,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 			expCoins:      coins,
 		},
 		{
-			name: "error - erc20 token not registered",
+			name: "error - erc20 token not registered", // sending an ibc transfer when the erc20 token is not registered should fail
 			malleate: func() {
 				sourcePrefix := transfertypes.GetDenomPrefix(transfertypes.PortID, sourceChannel)
 				prefixedDenom := sourcePrefix + registeredDenom

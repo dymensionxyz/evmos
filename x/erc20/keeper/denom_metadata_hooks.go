@@ -19,6 +19,9 @@ func NewERC20ContractRegistrationHook(erc20Keeper Keeper) ERC20BankContractRegis
 	}
 }
 
+// AfterDenomMetadataCreation deploys the ERC20 contract for the IBC denom. It is called after the
+// bank module creates the denom metadata. Without the ERC20 contract, the IBC denom cannot be
+// converted to the ERC20 token, and the IBC transfer will fail.
 func (e ERC20BankContractRegistrationHook) AfterDenomMetadataCreation(ctx sdk.Context, newDenomMetadata banktypes.Metadata) error {
 	// only deploy for IBC denom.
 	if !strings.HasPrefix(strings.ToLower(newDenomMetadata.Base), "ibc/") {
@@ -26,7 +29,7 @@ func (e ERC20BankContractRegistrationHook) AfterDenomMetadataCreation(ctx sdk.Co
 	}
 
 	if _, err := e.erc20Keeper.RegisterCoin(ctx, newDenomMetadata); err != nil {
-		return fmt.Errorf("failed to deploy the erc20 contract for the IBC coin: %s; error: %w", newDenomMetadata.Base, err)
+		return fmt.Errorf("deploy the erc20 contract for the ibc coin: %s; error: %w", newDenomMetadata.Base, err)
 	}
 
 	return nil

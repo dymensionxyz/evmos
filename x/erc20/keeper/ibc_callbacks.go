@@ -108,7 +108,7 @@ func (k Keeper) OnRecvPacket(
 
 	address := common.HexToAddress(pair.Erc20Address)
 	if !k.IsERC20Registered(ctx, address) {
-		err := errorsmod.Wrapf(types.ErrERC20TokenPairNotRegistered, "ERC20 token pair %s does not exist", coin.Denom)
+		err := errorsmod.Wrapf(types.ErrERC20TokenPairNotRegistered, "erc20 token pair %s does not exist", coin.Denom)
 		return channeltypes.NewErrorAcknowledgement(err)
 	}
 
@@ -116,7 +116,7 @@ func (k Keeper) OnRecvPacket(
 	// which includes the received coins.
 	balance := k.bankKeeper.GetBalance(ctx, recipient, coin.Denom)
 	if !balance.IsPositive() {
-		// no-op: continue with the rest of the stack without conversion
+		// if the balance is zero, no need to convert
 		return ack
 	}
 
