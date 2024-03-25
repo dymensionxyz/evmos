@@ -72,6 +72,8 @@ func TestERC20BankContractRegistrationHook_AfterDenomMetadataCreation(t *testing
 			err := e.AfterDenomMetadataCreation(sdk.Context{}, tt.args.newDenomMetadata)
 			if tt.expectErr != "" {
 				require.EqualError(t, err, tt.expectErr)
+			} else {
+				require.NoError(t, err)
 			}
 			require.Equal(t, tt.fields.erc20Keeper.registered, tt.expectRegistered)
 		})
