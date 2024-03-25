@@ -12,6 +12,8 @@ type ERC20BankContractRegistrationHook struct {
 	erc20Keeper Keeper
 }
 
+const denomIBCPrefix = "ibc/"
+
 // NewERC20ContractRegistrationHook returns the DenomMetadataHooks for ERC20 registration
 func NewERC20ContractRegistrationHook(erc20Keeper Keeper) ERC20BankContractRegistrationHook {
 	return ERC20BankContractRegistrationHook{
@@ -24,7 +26,7 @@ func NewERC20ContractRegistrationHook(erc20Keeper Keeper) ERC20BankContractRegis
 // converted to the ERC20 token, and the IBC transfer will fail.
 func (e ERC20BankContractRegistrationHook) AfterDenomMetadataCreation(ctx sdk.Context, newDenomMetadata banktypes.Metadata) error {
 	// only deploy for IBC denom.
-	if !strings.HasPrefix(strings.ToLower(newDenomMetadata.Base), "ibc/") {
+	if !strings.HasPrefix(strings.ToLower(newDenomMetadata.Base), denomIBCPrefix) {
 		return nil
 	}
 
@@ -36,7 +38,5 @@ func (e ERC20BankContractRegistrationHook) AfterDenomMetadataCreation(ctx sdk.Co
 }
 
 func (e ERC20BankContractRegistrationHook) AfterDenomMetadataUpdate(sdk.Context, banktypes.Metadata) error {
-	// do nothing
-
-	return nil
+	return fmt.Errorf("update the denom metadata while having an already existing contract")
 }

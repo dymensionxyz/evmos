@@ -100,8 +100,8 @@ func (k Keeper) OnRecvPacket(
 		return ack
 	}
 
-	pair, found := k.GetTokenPair(ctx, pairID)
-	if !(found && pair.Enabled) {
+	pair, _ := k.GetTokenPair(ctx, pairID)
+	if !pair.Enabled {
 		// no-op: continue with the rest of the stack without conversion
 		return ack
 	}
@@ -115,10 +115,6 @@ func (k Keeper) OnRecvPacket(
 	// Instead of converting just the received coins, convert the whole user balance
 	// which includes the received coins.
 	balance := k.bankKeeper.GetBalance(ctx, recipient, coin.Denom)
-	if !balance.IsPositive() {
-		// if the balance is zero, no need to convert
-		return ack
-	}
 
 	// Build MsgConvertCoin, from recipient to recipient since IBC transfer already occurred
 	msg := types.NewMsgConvertCoin(balance, common.BytesToAddress(recipient.Bytes()), recipient)
