@@ -23,6 +23,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
+
 	transfertypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
 	channeltypes "github.com/cosmos/ibc-go/v6/modules/core/04-channel/types"
 	"github.com/cosmos/ibc-go/v6/modules/core/exported"
@@ -35,7 +36,7 @@ import (
 // OnRecvPacket performs the ICS20 middleware receive callback for automatically
 // converting an IBC Coin to their ERC20 representation.
 // For the conversion to succeed, the IBC denomination must have previously been
-// registered via governance. Note that the native staking denomination (e.g. "aevmos"),
+// registered. Note that the native staking denomination (e.g. "aevmos"),
 // is excluded from the conversion.
 //
 // CONTRACT: This middleware MUST be executed transfer after the ICS20 OnRecvPacket
@@ -43,7 +44,10 @@ import (
 // stack if:
 // - ERC20s are disabled
 // - Denomination is native staking token
+// Return an error acknowledgement if:
 // - The base denomination is not registered as ERC20
+// - The packet is received from a non-evm channel
+// - The packet is received from a non-evm chain
 func (k Keeper) OnRecvPacket(
 	ctx sdk.Context,
 	packet channeltypes.Packet,
@@ -67,7 +71,7 @@ func (k Keeper) OnRecvPacket(
 	}
 
 	// Get addresses in `evmos1` and the original bech32 format
-	sender, recipient, _, _, err := ibc.GetTransferSenderRecipient(packet)
+	sender, recipient, err := ibc.GetTransferSenderRecipientFromData(data)
 	if err != nil {
 		return channeltypes.NewErrorAcknowledgement(err)
 	}
@@ -95,21 +99,14 @@ func (k Keeper) OnRecvPacket(
 
 	pairID := k.GetTokenPairID(ctx, coin.Denom)
 	if len(pairID) == 0 {
-		// short-circuit: if the denom is not registered, conversion will fail
-		// so we can continue with the rest of the stack
-		return ack
+		err = errorsmod.Wrapf(types.ErrTokenPairNotFound, "token pair not found for %s", coin.Denom)
+		return channeltypes.NewErrorAcknowledgement(err)
 	}
 
 	pair, _ := k.GetTokenPair(ctx, pairID)
 	if !pair.Enabled {
 		// no-op: continue with the rest of the stack without conversion
 		return ack
-	}
-
-	address := common.HexToAddress(pair.Erc20Address)
-	if !k.IsERC20Registered(ctx, address) {
-		err := errorsmod.Wrapf(types.ErrERC20TokenPairNotRegistered, "erc20 token pair %s does not exist", coin.Denom)
-		return channeltypes.NewErrorAcknowledgement(err)
 	}
 
 	// Instead of converting just the received coins, convert the whole user balance

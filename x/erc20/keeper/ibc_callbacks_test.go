@@ -66,16 +66,15 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 	)
 
 	testCases := []struct {
-		name               string
-		malleate           func()
-		ackSuccess         bool
-		receiver           sdk.AccAddress
-		expErc20s          *big.Int
-		expCoins           sdk.Coins
-		checkBalances      bool
-		disableERC20       bool
-		disableTokenPair   bool
-		erc20TokenToDelete string
+		name             string
+		malleate         func()
+		ackSuccess       bool
+		receiver         sdk.AccAddress
+		expErc20s        *big.Int
+		expCoins         sdk.Coins
+		checkBalances    bool
+		disableERC20     bool
+		disableTokenPair bool
 	}{
 		{
 			name: "error - non ics-20 packet",
@@ -148,7 +147,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 				bz := transfertypes.ModuleCdc.MustMarshalJSON(&transfer)
 				packet = channeltypes.NewPacket(bz, 1, transfertypes.PortID, sourceChannel, transfertypes.PortID, "channel-100", timeoutHeight, 0)
 			},
-			ackSuccess:    true,
+			ackSuccess:    false,
 			receiver:      secpAddr,
 			expErc20s:     big.NewInt(0),
 			expCoins:      coins,
@@ -193,7 +192,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 				bz := transfertypes.ModuleCdc.MustMarshalJSON(&transfer)
 				packet = channeltypes.NewPacket(bz, 1, transfertypes.PortID, sourceChannel, transfertypes.PortID, evmosChannel, timeoutHeight, 0)
 			},
-			ackSuccess:    true,
+			ackSuccess:    false,
 			receiver:      ethsecpAddr,
 			expErc20s:     big.NewInt(0),
 			expCoins:      coins,
@@ -229,10 +228,8 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 				packet = channeltypes.NewPacket(bz, 100, transfertypes.PortID, sourceChannel, transfertypes.PortID, evmosChannel, timeoutHeight, 0)
 			},
 			receiver:      secpAddr,
-			ackSuccess:    true,
+			ackSuccess:    false,
 			checkBalances: false,
-			expErc20s:     big.NewInt(0),
-			expCoins:      coins,
 		},
 		{
 			name: "error - invalid denomination", // should fall as unregistered and not transfer any coins, but ack is Success
@@ -242,26 +239,10 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 				packet = channeltypes.NewPacket(bz, 1, transfertypes.PortID, sourceChannel, transfertypes.PortID, evmosChannel, timeoutHeight, 0)
 			},
 			receiver:      secpAddr,
-			ackSuccess:    true,
+			ackSuccess:    false,
 			checkBalances: true,
 			expErc20s:     big.NewInt(0),
 			expCoins:      coins,
-		},
-		{
-			name: "error - erc20 token not registered", // sending an ibc transfer when the erc20 token is not registered should fail
-			malleate: func() {
-				sourcePrefix := transfertypes.GetDenomPrefix(transfertypes.PortID, sourceChannel)
-				prefixedDenom := sourcePrefix + registeredDenom
-				transfer := transfertypes.NewFungibleTokenPacketData(prefixedDenom, "100", secpAddrCosmos, secpAddrEvmos, "")
-				bz := transfertypes.ModuleCdc.MustMarshalJSON(&transfer)
-				packet = channeltypes.NewPacket(bz, 100, transfertypes.PortID, sourceChannel, transfertypes.PortID, evmosChannel, timeoutHeight, 0)
-			},
-			ackSuccess:         false,
-			receiver:           secpAddr,
-			expErc20s:          big.NewInt(0),
-			expCoins:           coins,
-			checkBalances:      true,
-			erc20TokenToDelete: "0x80b5a32E4F032B2a058b4F29EC95EEfEEB87aDcd",
 		},
 		{
 			name: "ibc conversion - sender == receiver and from evm chain",
@@ -387,11 +368,6 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 			if tc.disableTokenPair {
 				_, err := suite.app.Erc20Keeper.ToggleConversion(suite.ctx, pair.Denom)
 				suite.Require().NoError(err)
-			}
-
-			// so we can test the case where the ERC20 token was not registered prior to the IBC transfer
-			if tc.erc20TokenToDelete != "" {
-				suite.app.Erc20Keeper.DeleteERC20Map(suite.ctx, common.HexToAddress(tc.erc20TokenToDelete))
 			}
 
 			// Perform IBC callback
