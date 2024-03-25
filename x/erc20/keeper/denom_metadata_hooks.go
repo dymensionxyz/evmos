@@ -6,16 +6,21 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/evmos/evmos/v12/x/erc20/types"
 )
 
 type ERC20BankContractRegistrationHook struct {
-	erc20Keeper Keeper
+	erc20Keeper keeper
+}
+
+type keeper interface {
+	RegisterCoin(ctx sdk.Context, coinMetadata banktypes.Metadata) (*types.TokenPair, error)
 }
 
 const denomIBCPrefix = "ibc/"
 
 // NewERC20ContractRegistrationHook returns the DenomMetadataHooks for ERC20 registration
-func NewERC20ContractRegistrationHook(erc20Keeper Keeper) ERC20BankContractRegistrationHook {
+func NewERC20ContractRegistrationHook(erc20Keeper keeper) ERC20BankContractRegistrationHook {
 	return ERC20BankContractRegistrationHook{
 		erc20Keeper: erc20Keeper,
 	}
