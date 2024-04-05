@@ -37,27 +37,24 @@ type Keeper struct {
 	// Store key required for the Fee Market Prefix KVStore.
 	storeKey     storetypes.StoreKey
 	transientKey storetypes.StoreKey
-	// the address capable of executing a MsgUpdateParams message. Typically, this should be the x/gov module account.
-	authority sdk.AccAddress
 	// Legacy subspace
-	ss paramstypes.Subspace
+	ps paramstypes.Subspace
 }
 
 // NewKeeper generates new fee market module keeper
 func NewKeeper(
-	cdc codec.BinaryCodec, authority sdk.AccAddress, storeKey, transientKey storetypes.StoreKey, ss paramstypes.Subspace,
+	cdc codec.BinaryCodec, storeKey, transientKey storetypes.StoreKey, ps paramstypes.Subspace,
 ) Keeper {
-	// ensure authority account is correctly formatted
-	if err := sdk.VerifyAddressFormat(authority); err != nil {
-		panic(err)
+	// set KeyTable if it has not already been set
+	if !ps.HasKeyTable() {
+		ps = ps.WithKeyTable(types.ParamKeyTable())
 	}
 
 	return Keeper{
 		cdc:          cdc,
 		storeKey:     storeKey,
-		authority:    authority,
 		transientKey: transientKey,
-		ss:           ss,
+		ps:           ps,
 	}
 }
 

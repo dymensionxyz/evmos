@@ -29,7 +29,7 @@ func (k Keeper) GetParams(ctx sdk.Context) (params types.Params) {
 	bz := store.Get(types.ParamsKey)
 	if len(bz) == 0 {
 		var p types.Params
-		k.ss.GetParamSetIfExists(ctx, &p)
+		k.ps.GetParamSetIfExists(ctx, &p)
 		return p
 	}
 

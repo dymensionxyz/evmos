@@ -3,9 +3,6 @@ package keeper_test
 import (
 	"fmt"
 
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-
 	"github.com/ethereum/go-ethereum/common"
 	utiltx "github.com/evmos/evmos/v12/testutil/tx"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
@@ -93,7 +90,7 @@ func (suite *KeeperTestSuite) TestBalanceOf() {
 		mockEVMKeeper = &MockEVMKeeper{}
 		suite.app.Erc20Keeper = keeper.NewKeeper(
 			suite.app.GetKey("erc20"), suite.app.AppCodec(),
-			authtypes.NewModuleAddress(govtypes.ModuleName),
+			suite.app.GetSubspace(types.ModuleName),
 			suite.app.AccountKeeper, suite.app.BankKeeper,
 			mockEVMKeeper, suite.app.StakingKeeper)
 
@@ -282,7 +279,7 @@ func (suite *KeeperTestSuite) TestForceFail() {
 			mockEVMKeeper = &MockEVMKeeper{}
 			suite.app.Erc20Keeper = keeper.NewKeeper(
 				suite.app.GetKey("erc20"), suite.app.AppCodec(),
-				authtypes.NewModuleAddress(govtypes.ModuleName), suite.app.AccountKeeper,
+				suite.app.GetSubspace(types.ModuleName), suite.app.AccountKeeper,
 				suite.app.BankKeeper, mockEVMKeeper, suite.app.StakingKeeper)
 
 			tc.malleate()
@@ -371,7 +368,7 @@ func (suite *KeeperTestSuite) TestQueryERC20ForceFail() {
 		mockEVMKeeper = &MockEVMKeeper{}
 		suite.app.Erc20Keeper = keeper.NewKeeper(
 			suite.app.GetKey("erc20"), suite.app.AppCodec(),
-			authtypes.NewModuleAddress(govtypes.ModuleName), suite.app.AccountKeeper,
+			suite.app.GetSubspace(types.ModuleName), suite.app.AccountKeeper,
 			suite.app.BankKeeper, mockEVMKeeper, suite.app.StakingKeeper)
 
 		tc.malleate()

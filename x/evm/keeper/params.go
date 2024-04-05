@@ -50,6 +50,6 @@ func (k Keeper) SetParams(ctx sdk.Context, params types.Params) error {
 // GetLegacyParams returns param set for version before migrate
 func (k Keeper) GetLegacyParams(ctx sdk.Context) types.Params {
 	var params types.Params
-	k.ss.GetParamSetIfExists(ctx, &params)
+	k.ps.GetParamSetIfExists(ctx, &params)
 	return params
 }

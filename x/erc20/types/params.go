@@ -18,6 +18,8 @@ package types
 
 import (
 	fmt "fmt"
+
+	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 )
 
 // Parameter store key
@@ -25,6 +27,11 @@ var (
 	ParamStoreKeyEnableErc20   = []byte("EnableErc20")
 	ParamStoreKeyEnableEVMHook = []byte("EnableEVMHook")
 )
+
+// ParamKeyTable the param key table for launch module
+func ParamKeyTable() paramtypes.KeyTable {
+	return paramtypes.NewKeyTable().RegisterParamSet(&Params{})
+}
 
 // NewParams creates a new Params object
 func NewParams(
@@ -41,6 +48,14 @@ func DefaultParams() Params {
 	return Params{
 		EnableErc20:   true,
 		EnableEVMHook: true,
+	}
+}
+
+// ParamSetPairs get the params.ParamSet
+func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
+	return paramtypes.ParamSetPairs{
+		paramtypes.NewParamSetPair(ParamStoreKeyEnableErc20, p.EnableErc20, ValidateBool),
+		paramtypes.NewParamSetPair(ParamStoreKeyEnableEVMHook, p.EnableEVMHook, ValidateBool),
 	}
 }
 

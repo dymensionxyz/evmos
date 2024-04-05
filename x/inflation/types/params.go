@@ -22,12 +22,18 @@ import (
 	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 	evm "github.com/evmos/evmos/v12/x/evm/types"
 )
 
 var ParamsKey = []byte("Params")
 
 var (
+	KeyMintDenom              = []byte("MintDenom")
+	KeyExponentialCalculation = []byte("ExponentialCalculation")
+	KeyInflationDistribution  = []byte("InflationDistribution")
+	KeyEnableInflation        = []byte("EnableInflation")
+
 	DefaultInflationDenom         = evm.DefaultEVMDenom
 	DefaultInflation              = true
 	DefaultExponentialCalculation = ExponentialCalculation{
@@ -43,6 +49,11 @@ var (
 		CommunityPool:   sdk.NewDecWithPrec(133333333, 9), // 0.13 = 10% / (1 - 25%)
 	}
 )
+
+// ParamKeyTable the param key table for inflation module
+func ParamKeyTable() paramtypes.KeyTable {
+	return paramtypes.NewKeyTable().RegisterParamSet(&Params{})
+}
 
 func NewParams(
 	mintDenom string,
@@ -65,6 +76,16 @@ func DefaultParams() Params {
 		ExponentialCalculation: DefaultExponentialCalculation,
 		InflationDistribution:  DefaultInflationDistribution,
 		EnableInflation:        DefaultInflation,
+	}
+}
+
+// ParamSetPairs get the params.ParamSet
+func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
+	return paramtypes.ParamSetPairs{
+		paramtypes.NewParamSetPair(KeyMintDenom, &p.MintDenom, validateMintDenom),
+		paramtypes.NewParamSetPair(KeyExponentialCalculation, &p.ExponentialCalculation, validateExponentialCalculation),
+		paramtypes.NewParamSetPair(KeyInflationDistribution, &p.InflationDistribution, validateInflationDistribution),
+		paramtypes.NewParamSetPair(KeyEnableInflation, &p.EnableInflation, validateBool),
 	}
 }
 

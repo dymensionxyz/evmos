@@ -41,12 +41,6 @@ const (
 	updateParamsName = "ethermint/MsgUpdateParams"
 )
 
-// NOTE: This is required for the GetSignBytes function
-func init() {
-	RegisterLegacyAminoCodec(amino)
-	amino.Seal()
-}
-
 // RegisterInterfaces registers the client interfaces to protobuf Any.
 func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 	registry.RegisterImplementations(
@@ -56,7 +50,6 @@ func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 	registry.RegisterImplementations(
 		(*sdk.Msg)(nil),
 		&MsgEthereumTx{},
-		&MsgUpdateParams{},
 	)
 	registry.RegisterInterface(
 		"ethermint.evm.v1.TxData",
@@ -99,9 +92,4 @@ func UnpackTxData(any *codectypes.Any) (TxData, error) {
 	}
 
 	return txData, nil
-}
-
-// RegisterLegacyAminoCodec required for EIP-712
-func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
-	cdc.RegisterConcrete(&MsgUpdateParams{}, updateParamsName, nil)
 }

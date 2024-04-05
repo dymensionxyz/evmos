@@ -3,9 +3,6 @@ package keeper_test
 import (
 	"fmt"
 
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/stretchr/testify/mock"
@@ -199,7 +196,7 @@ func (suite KeeperTestSuite) TestRegisterCoin() { //nolint:govet // we can copy 
 
 				suite.app.Erc20Keeper = keeper.NewKeeper(
 					suite.app.GetKey("erc20"), suite.app.AppCodec(),
-					authtypes.NewModuleAddress(govtypes.ModuleName), suite.app.AccountKeeper,
+					suite.app.GetSubspace(types.ModuleName), suite.app.AccountKeeper,
 					suite.app.BankKeeper, mockEVMKeeper, suite.app.StakingKeeper)
 
 				mockEVMKeeper.On("EstimateGas", mock.Anything, mock.Anything).Return(&evmtypes.EstimateGasResponse{Gas: uint64(200)}, nil)
@@ -289,7 +286,7 @@ func (suite KeeperTestSuite) TestRegisterERC20() { //nolint:govet // we can copy
 
 				suite.app.Erc20Keeper = keeper.NewKeeper(
 					suite.app.GetKey("erc20"), suite.app.AppCodec(),
-					authtypes.NewModuleAddress(govtypes.ModuleName), suite.app.AccountKeeper,
+					suite.app.GetSubspace(types.ModuleName), suite.app.AccountKeeper,
 					suite.app.BankKeeper, mockEVMKeeper, suite.app.StakingKeeper)
 
 				mockEVMKeeper.On("EstimateGas", mock.Anything, mock.Anything).Return(&evmtypes.EstimateGasResponse{Gas: uint64(200)}, nil)

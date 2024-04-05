@@ -3,8 +3,6 @@ package keeper_test
 import (
 	"fmt"
 
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -321,7 +319,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 			suite.app.RecoveryKeeper = keeper.NewKeeper(
 				suite.app.GetKey(types.StoreKey),
 				suite.app.AppCodec(),
-				authtypes.NewModuleAddress(govtypes.ModuleName),
+				suite.app.GetSubspace(types.ModuleName),
 				suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.IBCKeeper.ChannelKeeper, mockTransferKeeper, suite.app.ClaimsKeeper)
 
 			// Fund receiver account with EVMOS, ERC20 coins and IBC vouchers
@@ -580,7 +578,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacketFailTransfer() {
 			suite.app.RecoveryKeeper = keeper.NewKeeper(
 				suite.app.GetKey(types.StoreKey),
 				suite.app.AppCodec(),
-				authtypes.NewModuleAddress(govtypes.ModuleName),
+				suite.app.GetSubspace(types.ModuleName),
 				suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.IBCKeeper.ChannelKeeper, mockTransferKeeper, suite.app.ClaimsKeeper)
 
 			// Fund receiver account with EVMOS

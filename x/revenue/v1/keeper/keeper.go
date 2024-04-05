@@ -22,6 +22,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/evmos/evmos/v12/x/revenue/v1/types"
@@ -30,10 +31,9 @@ import (
 // Keeper of this module maintains collections of revenues for contracts
 // registered to receive transaction fees.
 type Keeper struct {
-	storeKey storetypes.StoreKey
-	cdc      codec.BinaryCodec
-	// the address capable of executing a MsgUpdateParams message. Typically, this should be the x/gov module account.
-	authority        sdk.AccAddress
+	storeKey         storetypes.StoreKey
+	cdc              codec.BinaryCodec
+	ps               paramtypes.Subspace
 	bankKeeper       types.BankKeeper
 	evmKeeper        types.EVMKeeper
 	feeCollectorName string
@@ -43,15 +43,20 @@ type Keeper struct {
 func NewKeeper(
 	storeKey storetypes.StoreKey,
 	cdc codec.BinaryCodec,
-	authority sdk.AccAddress,
+	ps paramtypes.Subspace,
 	bk types.BankKeeper,
 	evmKeeper types.EVMKeeper,
 	feeCollector string,
 ) Keeper {
+	// set KeyTable if it has not already been set
+	if !ps.HasKeyTable() {
+		ps = ps.WithKeyTable(types.ParamKeyTable())
+	}
+
 	return Keeper{
 		storeKey:         storeKey,
 		cdc:              cdc,
-		authority:        authority,
+		ps:               ps,
 		bankKeeper:       bk,
 		evmKeeper:        evmKeeper,
 		feeCollectorName: feeCollector,

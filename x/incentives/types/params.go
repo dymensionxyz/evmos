@@ -21,11 +21,26 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
+
 	epochstypes "github.com/evmos/evmos/v12/x/epochs/types"
 )
 
-// ParamsKey params store key
-var ParamsKey = []byte("Params")
+var _ LegacyParams = &Params{}
+
+// Parameter store key
+var (
+	ParamsKey                     = []byte("Params")
+	ParamStoreKeyEnableIncentives = []byte("EnableIncentives")
+	ParamStoreKeyAllocationLimit  = []byte("AllocationLimit")
+	ParamStoreKeyEpochIdentifier  = []byte("EpochIdentifier")
+	ParamStoreKeyRewardScaler     = []byte("RewardScaler")
+)
+
+// ParamKeyTable returns the parameter key table.
+func ParamKeyTable() paramtypes.KeyTable {
+	return paramtypes.NewKeyTable().RegisterParamSet(&Params{})
+}
 
 var (
 	DefaultEnableIncentives          = true
@@ -55,6 +70,16 @@ func DefaultParams() Params {
 		AllocationLimit:           DefaultAllocationLimit,
 		IncentivesEpochIdentifier: DefaultIncentivesEpochIdentifier,
 		RewardScaler:              DefaultRewardScalar,
+	}
+}
+
+// ParamSetPairs returns the parameter set pairs.
+func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
+	return paramtypes.ParamSetPairs{
+		paramtypes.NewParamSetPair(ParamStoreKeyEnableIncentives, &p.EnableIncentives, validateBool),
+		paramtypes.NewParamSetPair(ParamStoreKeyAllocationLimit, &p.AllocationLimit, validatePercentage),
+		paramtypes.NewParamSetPair(ParamStoreKeyEpochIdentifier, &p.IncentivesEpochIdentifier, epochstypes.ValidateEpochIdentifierInterface),
+		paramtypes.NewParamSetPair(ParamStoreKeyRewardScaler, &p.RewardScaler, validateUncappedPercentage),
 	}
 }
 

@@ -28,7 +28,6 @@ var (
 	_ sdk.Msg = &MsgRegisterRevenue{}
 	_ sdk.Msg = &MsgCancelRevenue{}
 	_ sdk.Msg = &MsgUpdateRevenue{}
-	_ sdk.Msg = &MsgUpdateParams{}
 )
 
 const (
@@ -187,24 +186,4 @@ func (msg *MsgUpdateRevenue) GetSignBytes() []byte {
 func (msg MsgUpdateRevenue) GetSigners() []sdk.AccAddress {
 	from := sdk.MustAccAddressFromBech32(msg.DeployerAddress)
 	return []sdk.AccAddress{from}
-}
-
-// GetSigners returns the expected signers for a MsgUpdateParams message.
-func (m *MsgUpdateParams) GetSigners() []sdk.AccAddress {
-	addr := sdk.MustAccAddressFromBech32(m.Authority)
-	return []sdk.AccAddress{addr}
-}
-
-// ValidateBasic does a sanity check of the provided data
-func (m *MsgUpdateParams) ValidateBasic() error {
-	if _, err := sdk.AccAddressFromBech32(m.Authority); err != nil {
-		return errorsmod.Wrap(err, "invalid authority address")
-	}
-
-	return m.Params.Validate()
-}
-
-// GetSignBytes implements the LegacyMsg interface.
-func (m MsgUpdateParams) GetSignBytes() []byte {
-	return sdk.MustSortJSON(AminoCdc.MustMarshalJSON(&m))
 }

@@ -8,8 +8,6 @@ import (
 	"github.com/evmos/evmos/v12/utils"
 	"github.com/evmos/evmos/v12/x/erc20/keeper"
 
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -343,7 +341,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 			suite.app.Erc20Keeper = keeper.NewKeeper(
 				suite.app.GetKey(types.StoreKey),
 				suite.app.AppCodec(),
-				authtypes.NewModuleAddress(govtypes.ModuleName),
+				suite.app.GetSubspace(types.ModuleName),
 				suite.app.AccountKeeper,
 				suite.app.BankKeeper,
 				suite.app.EvmKeeper,
