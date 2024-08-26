@@ -61,6 +61,7 @@ func NewKeeper(
 		authority:    authority,
 		transientKey: transientKey,
 		ss:           ss,
+		paramsKeeper: paramsKeeper,
 	}
 }
 
