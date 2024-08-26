@@ -56,7 +56,7 @@ func (k Keeper) CalculateBaseFee(ctx sdk.Context) *big.Int {
 
 	parentGasUsed := k.GetBlockGasWanted(ctx)
 
-	gasLimit := big.NewInt(rollappparams.Block.MaxGas)
+	gasLimit := big.NewInt(rollappparams.Blockmaxgas)
 
 	// CONTRACT: ElasticityMultiplier cannot be 0 as it's checked in the params
 	// validation
