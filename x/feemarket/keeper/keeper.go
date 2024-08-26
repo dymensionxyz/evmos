@@ -25,6 +25,8 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/evmos/evmos/v12/x/feemarket/types"
+
+	rollappparamskeeper "github.com/dymensionxyz/dymension-rdk/x/rollappparams/keeper"
 )
 
 // KeyPrefixBaseFeeV1 TODO: Temporary will be removed with params refactor PR
@@ -40,12 +42,13 @@ type Keeper struct {
 	// the address capable of executing a MsgUpdateParams message. Typically, this should be the x/gov module account.
 	authority sdk.AccAddress
 	// Legacy subspace
-	ss paramstypes.Subspace
+	ss           paramstypes.Subspace
+	paramsKeeper rollappparamskeeper.Keeper
 }
 
 // NewKeeper generates new fee market module keeper
 func NewKeeper(
-	cdc codec.BinaryCodec, authority sdk.AccAddress, storeKey, transientKey storetypes.StoreKey, ss paramstypes.Subspace,
+	cdc codec.BinaryCodec, authority sdk.AccAddress, storeKey, transientKey storetypes.StoreKey, ss paramstypes.Subspace, paramsKeeper rollappparamskeeper.Keeper,
 ) Keeper {
 	// ensure authority account is correctly formatted
 	if err := sdk.VerifyAddressFormat(authority); err != nil {

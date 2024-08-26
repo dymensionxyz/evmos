@@ -135,6 +135,9 @@ import (
 	feemarketkeeper "github.com/evmos/evmos/v12/x/feemarket/keeper"
 	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
 
+	rollappparamskeeper "github.com/dymensionxyz/dymension-rdk/x/rollappparams/keeper"
+	rollappparamstypes "github.com/dymensionxyz/dymension-rdk/x/rollappparams/types"
+
 	// unnamed import of statik for swagger UI support
 	_ "github.com/evmos/evmos/v12/client/docs/statik"
 
@@ -320,14 +323,15 @@ type Evmos struct {
 	FeeMarketKeeper feemarketkeeper.Keeper
 
 	// Evmos keepers
-	InflationKeeper  inflationkeeper.Keeper
-	ClaimsKeeper     *claimskeeper.Keeper
-	Erc20Keeper      erc20keeper.Keeper
-	IncentivesKeeper incentiveskeeper.Keeper
-	EpochsKeeper     epochskeeper.Keeper
-	VestingKeeper    vestingkeeper.Keeper
-	RecoveryKeeper   *recoverykeeper.Keeper
-	RevenueKeeper    revenuekeeper.Keeper
+	InflationKeeper              inflationkeeper.Keeper
+	ClaimsKeeper                 *claimskeeper.Keeper
+	Erc20Keeper                  erc20keeper.Keeper
+	IncentivesKeeper             incentiveskeeper.Keeper
+	EpochsKeeper                 epochskeeper.Keeper
+	VestingKeeper                vestingkeeper.Keeper
+	RecoveryKeeper               *recoverykeeper.Keeper
+	RevenueKeeper                revenuekeeper.Keeper
+	RollappConsensusParamsKeeper rollappparamskeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -452,12 +456,16 @@ func NewEvmos(
 
 	tracer := cast.ToString(appOpts.Get(srvflags.EVMTracer))
 
+	app.RollappConsensusParamsKeeper = rollappparamskeeper.NewKeeper(
+		app.GetSubspace(rollappparamstypes.ModuleName),
+	)
 	// Create Ethermint keepers
 	app.FeeMarketKeeper = feemarketkeeper.NewKeeper(
 		appCodec, authtypes.NewModuleAddress(govtypes.ModuleName),
 		keys[feemarkettypes.StoreKey],
 		tkeys[feemarkettypes.TransientKey],
 		app.GetSubspace(feemarkettypes.ModuleName),
+		app.RollappConsensusParamsKeeper,
 	)
 
 	app.EvmKeeper = evmkeeper.NewKeeper(
