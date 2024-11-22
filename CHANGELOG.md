@@ -41,6 +41,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 - (deps) [#1635](https://github.com/evmos/evmos/pull/1635) Update cometbft `v0.34.29` with several minor bug fixes and low-severity security-fixes
 
+### Bug Fixes
+
+- (evm) [#33](https://github.com/dymensionxyz/evmos/issues/33) Prevent duplicate events on transfer
+
 ## [v12.1.5] - 2023-06-08
 
 ### Bug Fixes
