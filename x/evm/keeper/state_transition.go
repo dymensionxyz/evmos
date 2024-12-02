@@ -84,6 +84,9 @@ func (k *Keeper) NewEVM(
 
 			var methods []vm.CustomPrecompiledContractMethod
 			for _, executor := range executors {
+				if !executor.ReadOnly() {
+					panic("current implementation only support readonly")
+				}
 				methods = append(methods, NewCustomPrecompiledContractMethod(
 					executor,
 				))

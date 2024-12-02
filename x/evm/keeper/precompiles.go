@@ -60,6 +60,9 @@ func (m customPrecompiledContractMethodExecutorImpl) Execute(caller corevm.Contr
 	}
 
 	ctx := evm.StateDB.(statedb.StateDbWithExt).ExposeSdkContext()
+	{ // branch to avoid misuse of ctx
+		ctx, _ = ctx.CacheContext()
+	}
 	return m.executor.Execute(caller, contractAddress, input, cpcExecutorEnv{
 		ctx: ctx,
 		evm: evm,
