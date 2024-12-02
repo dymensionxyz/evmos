@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -23,10 +24,8 @@ const (
 	cpcAddrNonceBech32 byte = iota + 2
 )
 
-var (
-	// CpcBech32FixedAddress is the address of the bech32 custom precompiled contract.
-	CpcBech32FixedAddress common.Address
-)
+// CpcBech32FixedAddress is the address of the bech32 custom precompiled contract.
+var CpcBech32FixedAddress common.Address
 
 var _ corevm.CustomPrecompiledContractMethodExecutorI = &customPrecompiledContractMethodExecutorImpl{}
 
