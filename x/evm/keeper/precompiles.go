@@ -63,9 +63,9 @@ func (m customPrecompiledContractMethodExecutorImpl) Execute(caller corevm.Contr
 	{ // branch to avoid misuse of ctx
 		ctx, _ = ctx.CacheContext()
 	}
-	return m.executor.Execute(caller, contractAddress, input, cpcExecutorEnv{
-		ctx: ctx,
-		evm: evm,
+	return m.executor.Execute(caller, contractAddress, input, CpcExecutorEnv{
+		Ctx: ctx,
+		Evm: evm,
 	})
 }
 
@@ -75,14 +75,14 @@ type CustomPrecompiledContractI interface {
 	GetMethodExecutors() []ExtendedCustomPrecompiledContractMethodExecutorI
 }
 
-type cpcExecutorEnv struct {
-	ctx sdk.Context
-	evm *corevm.EVM
+type CpcExecutorEnv struct {
+	Ctx sdk.Context
+	Evm *corevm.EVM
 }
 
 type ExtendedCustomPrecompiledContractMethodExecutorI interface {
 	// Execute executes the method with the given input and environment then returns the output.
-	Execute(caller corevm.ContractRef, contractAddress common.Address, input []byte, env cpcExecutorEnv) ([]byte, error)
+	Execute(caller corevm.ContractRef, contractAddress common.Address, input []byte, env CpcExecutorEnv) ([]byte, error)
 
 	// Metadata
 
@@ -98,7 +98,7 @@ type notSupportedCustomPrecompiledContractMethodExecutor struct {
 	readOnly               bool
 }
 
-func (n notSupportedCustomPrecompiledContractMethodExecutor) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (n notSupportedCustomPrecompiledContractMethodExecutor) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ CpcExecutorEnv) ([]byte, error) {
 	return nil, fmt.Errorf("not supported")
 }
 

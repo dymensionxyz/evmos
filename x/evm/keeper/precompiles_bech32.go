@@ -61,7 +61,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoEncodeAddress struct{}
 
-func (e bech32CustomPrecompiledContractRoEncodeAddress) Execute(_ corevm.ContractRef, _ common.Address, input []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoEncodeAddress) Execute(_ corevm.ContractRef, _ common.Address, input []byte, _ CpcExecutorEnv) ([]byte, error) {
 	ips, err := abi.Bech32CpcInfo.UnpackMethodInput("bech32EncodeAddress", input)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoEncode32BytesAddress struct{}
 
-func (e bech32CustomPrecompiledContractRoEncode32BytesAddress) Execute(_ corevm.ContractRef, _ common.Address, input []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoEncode32BytesAddress) Execute(_ corevm.ContractRef, _ common.Address, input []byte, _ CpcExecutorEnv) ([]byte, error) {
 	ips, err := abi.Bech32CpcInfo.UnpackMethodInput("bech32Encode32BytesAddress", input)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoEncodeBytes struct{}
 
-func (e bech32CustomPrecompiledContractRoEncodeBytes) Execute(_ corevm.ContractRef, _ common.Address, input []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoEncodeBytes) Execute(_ corevm.ContractRef, _ common.Address, input []byte, _ CpcExecutorEnv) ([]byte, error) {
 	ips, err := abi.Bech32CpcInfo.UnpackMethodInput("bech32EncodeBytes", input)
 	if err != nil {
 		return nil, err
@@ -170,7 +170,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoDecode struct{}
 
-func (e bech32CustomPrecompiledContractRoDecode) Execute(_ corevm.ContractRef, _ common.Address, input []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoDecode) Execute(_ corevm.ContractRef, _ common.Address, input []byte, _ CpcExecutorEnv) ([]byte, error) {
 	ips, err := abi.Bech32CpcInfo.UnpackMethodInput("bech32Decode", input)
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoAccountAddrPrefix struct{}
 
-func (e bech32CustomPrecompiledContractRoAccountAddrPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoAccountAddrPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ CpcExecutorEnv) ([]byte, error) {
 	return abi.Bech32CpcInfo.PackMethodOutput("bech32AccountAddrPrefix", sdk.GetConfig().GetBech32AccountAddrPrefix())
 }
 
@@ -226,7 +226,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoValidatorAddrPrefix struct{}
 
-func (e bech32CustomPrecompiledContractRoValidatorAddrPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoValidatorAddrPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ CpcExecutorEnv) ([]byte, error) {
 	return abi.Bech32CpcInfo.PackMethodOutput("bech32ValidatorAddrPrefix", sdk.GetConfig().GetBech32ValidatorAddrPrefix())
 }
 
@@ -248,7 +248,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoConsensusAddrPrefix struct{}
 
-func (e bech32CustomPrecompiledContractRoConsensusAddrPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoConsensusAddrPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ CpcExecutorEnv) ([]byte, error) {
 	return abi.Bech32CpcInfo.PackMethodOutput("bech32ConsensusAddrPrefix", sdk.GetConfig().GetBech32ConsensusAddrPrefix())
 }
 
@@ -270,7 +270,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoAccountPubPrefix struct{}
 
-func (e bech32CustomPrecompiledContractRoAccountPubPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoAccountPubPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ CpcExecutorEnv) ([]byte, error) {
 	return abi.Bech32CpcInfo.PackMethodOutput("bech32AccountPubPrefix", sdk.GetConfig().GetBech32AccountPubPrefix())
 }
 
@@ -292,7 +292,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoValidatorPubPrefix struct{}
 
-func (e bech32CustomPrecompiledContractRoValidatorPubPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoValidatorPubPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ CpcExecutorEnv) ([]byte, error) {
 	return abi.Bech32CpcInfo.PackMethodOutput("bech32ValidatorPubPrefix", sdk.GetConfig().GetBech32ValidatorPubPrefix())
 }
 
@@ -314,7 +314,7 @@ var _ ExtendedCustomPrecompiledContractMethodExecutorI = &bech32CustomPrecompile
 
 type bech32CustomPrecompiledContractRoConsensusPubPrefix struct{}
 
-func (e bech32CustomPrecompiledContractRoConsensusPubPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ cpcExecutorEnv) ([]byte, error) {
+func (e bech32CustomPrecompiledContractRoConsensusPubPrefix) Execute(_ corevm.ContractRef, _ common.Address, _ []byte, _ CpcExecutorEnv) ([]byte, error) {
 	return abi.Bech32CpcInfo.PackMethodOutput("bech32ConsensusPubPrefix", sdk.GetConfig().GetBech32ConsensusPubPrefix())
 }
 
