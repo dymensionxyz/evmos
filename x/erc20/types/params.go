@@ -18,29 +18,36 @@ package types
 
 import (
 	fmt "fmt"
+
+	"cosmossdk.io/math"
 )
 
 // Parameter store key
 var (
-	ParamStoreKeyEnableErc20   = []byte("EnableErc20")
-	ParamStoreKeyEnableEVMHook = []byte("EnableEVMHook")
+	ParamStoreKeyEnableErc20     = []byte("EnableErc20")
+	ParamStoreKeyEnableEVMHook   = []byte("EnableEVMHook")
+	ParamStoreKeyRegistrationFee = []byte("RegistrationFee")
+
+	DefaultRegistrationFee = math.NewInt(10).MulRaw(1e18) // 10 tokens of native denom
 )
 
 // NewParams creates a new Params object
 func NewParams(
-	enableErc20 bool,
-	enableEVMHook bool,
+	enableErc20, enableEVMHook bool,
+	registrationFee math.Int,
 ) Params {
 	return Params{
-		EnableErc20:   enableErc20,
-		EnableEVMHook: enableEVMHook,
+		EnableErc20:     enableErc20,
+		EnableEVMHook:   enableEVMHook,
+		RegistrationFee: registrationFee,
 	}
 }
 
 func DefaultParams() Params {
 	return Params{
-		EnableErc20:   true,
-		EnableEVMHook: true,
+		EnableErc20:     true,
+		EnableEVMHook:   true,
+		RegistrationFee: DefaultRegistrationFee,
 	}
 }
 
@@ -58,5 +65,13 @@ func (p Params) Validate() error {
 		return err
 	}
 
-	return ValidateBool(p.EnableErc20)
+	if err := ValidateBool(p.EnableErc20); err != nil {
+		return err
+	}
+
+	if p.RegistrationFee.IsNegative() {
+		return fmt.Errorf("registration fee cannot be negative: %s", p.RegistrationFee)
+	}
+
+	return nil
 }

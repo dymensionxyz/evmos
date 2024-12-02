@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"cosmossdk.io/math"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 
@@ -12,6 +13,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/evmos/evmos/v12/testutil"
+	"github.com/evmos/evmos/v12/utils"
 	"github.com/evmos/evmos/v12/x/erc20/keeper"
 	"github.com/evmos/evmos/v12/x/erc20/types"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
@@ -1390,6 +1393,72 @@ func (suite *KeeperTestSuite) TestUpdateParams() {
 				suite.Require().Error(err)
 			} else {
 				suite.Require().NoError(err)
+			}
+		})
+	}
+}
+
+func (suite *KeeperTestSuite) TestRegisterERC20AsToken() { //nolint:govet // we can copy locks here because it is a test
+	testCases := []struct {
+		name     string
+		malleate func()
+		expPass  bool
+	}{
+		{
+			"ok",
+			func() {},
+			true,
+		},
+		{
+			"fail - not enough funds for registration fee",
+			func() {
+				// increase registration fee
+				params := suite.app.Erc20Keeper.GetParams(suite.ctx)
+				params.RegistrationFee = math.NewInt(1000).MulRaw(1e18)
+				suite.app.Erc20Keeper.SetParams(suite.ctx, params)
+			},
+			false,
+		},
+	}
+	for _, tc := range testCases {
+		suite.Run(fmt.Sprintf("Case %s", tc.name), func() {
+			var err error
+			suite.SetupTest() // reset
+
+			contractAddr, err := suite.DeployContract(erc20Name, erc20Symbol, cosmosDecimals)
+			suite.Require().NoError(err)
+
+			coinName := types.CreateDenom(contractAddr.String())
+
+			tc.malleate()
+
+			// fund sender
+			sender := sdk.AccAddress(suite.address.Bytes())
+			funds := types.DefaultRegistrationFee
+			err = testutil.FundAccount(suite.ctx, suite.app.BankKeeper, sender, sdk.NewCoins(sdk.NewCoin(utils.BaseDenom, funds)))
+			suite.Require().NoError(err)
+
+			msg := types.NewMsgRegisterERC20AsToken(sender.String(), contractAddr)
+			_, err = suite.app.Erc20Keeper.RegisterERC20AsToken(suite.ctx, msg)
+			metadata, found := suite.app.BankKeeper.GetDenomMetaData(suite.ctx, coinName)
+
+			if tc.expPass {
+				suite.Require().NoError(err, tc.name)
+				// Metadata variables
+				suite.Require().True(found)
+				suite.Require().Equal(coinName, metadata.Base)
+				suite.Require().Equal(coinName, metadata.Name)
+				suite.Require().Equal(types.SanitizeERC20Name(erc20Name), metadata.Display)
+				suite.Require().Equal(erc20Symbol, metadata.Symbol)
+				// Denom units
+				suite.Require().Equal(len(metadata.DenomUnits), 2)
+				suite.Require().Equal(coinName, metadata.DenomUnits[0].Denom)
+				suite.Require().Equal(zeroExponent, metadata.DenomUnits[0].Exponent)
+				suite.Require().Equal(types.SanitizeERC20Name(erc20Name), metadata.DenomUnits[1].Denom)
+				// Custom exponent at contract creation matches coin with token
+				suite.Require().Equal(metadata.DenomUnits[1].Exponent, uint32(cosmosDecimals))
+			} else {
+				suite.Require().Error(err, tc.name)
 			}
 		})
 	}

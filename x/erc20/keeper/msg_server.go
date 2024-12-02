@@ -25,6 +25,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -143,13 +144,15 @@ func (k Keeper) RegisterERC20AsToken(goCtx context.Context, msg *types.MsgRegist
 		)
 	}
 
-	if len(m.DenomUnits) != 2 {
-		return nil, errorsmod.Wrapf(
-			types.ErrInternalTokenPair, "denom metadata not found for: %s", strContract,
-		)
+	// Charge registration fee
+	registrationFee := k.GetRegistrationFee(ctx)
+	if !registrationFee.IsZero() {
+		senderAddr := sdk.MustAccAddressFromBech32(msg.Sender)
+		fees := sdk.NewCoins(sdk.NewCoin(k.evmKeeper.GetParams(ctx).EvmDenom, registrationFee))
+		if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, senderAddr, authtypes.FeeCollectorName, fees); err != nil {
+			return nil, errorsmod.Wrap(err, "failed to charge registration fee")
+		}
 	}
-
-	// FIXME: charge creation fee
 
 	ctx.EventManager().EmitEvents(
 		sdk.Events{

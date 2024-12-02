@@ -135,8 +135,9 @@ func (msg MsgConvertERC20) GetSigners() []sdk.AccAddress {
 }
 
 // NewMsgRegisterERC20AsToken creates a new instance of MsgRegisterERC20AsToken
-func NewMsgRegisterERC20AsToken(contract common.Address) *MsgRegisterERC20AsToken { //nolint: interfacer
+func NewMsgRegisterERC20AsToken(sender string, contract common.Address) *MsgRegisterERC20AsToken { //nolint: interfacer
 	return &MsgRegisterERC20AsToken{
+		Sender:          sender,
 		ContractAddress: contract.String(),
 	}
 }
