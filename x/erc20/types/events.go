@@ -37,6 +37,8 @@ const (
 	AttributeKeyCosmosCoin = "cosmos_coin"
 	AttributeKeyERC20Token = "erc20_token" // #nosec
 	AttributeKeyReceiver   = "receiver"
+	AttributeKeyDisplay    = "display"
+	AttributeKeySymbol     = "symbol"
 
 	// ERC20EventTransfer defines the transfer event for ERC20
 	ERC20EventTransfer = "Transfer"

@@ -22,6 +22,10 @@ service Msg {
   rpc ConvertERC20(MsgConvertERC20) returns (MsgConvertERC20Response) {
     option (google.api.http).get = "/evmos/erc20/v1/tx/convert_erc20";
   };
+  // RegisterERC20AsToken registers an ERC20 token contract for native Cosmos coin representation
+  rpc RegisterERC20AsToken(MsgRegisterERC20AsToken) returns (MsgRegisterERC20AsTokenResponse) {
+    option (google.api.http).get = "/evmos/erc20/v1/tx/register_erc20";
+  };
   // UpdateParams defined a governance operation for updating the x/erc20 module parameters.
   // The authority is hard-coded to the Cosmos SDK x/gov module account
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
@@ -56,6 +60,19 @@ message MsgConvertERC20 {
 
 // MsgConvertERC20Response returns no fields
 message MsgConvertERC20Response {}
+
+// MsgRegisterERC20AsToken defines a Msg to register ERC20 tokens to convert to native Cosmos coins
+message MsgRegisterERC20AsToken {
+  option (cosmos.msg.v1.signer) = "sender";
+  string sender = 1;
+
+  // contract_address is the address of the ERC20 token contract to register
+  string contract_address = 2;
+}
+
+// MsgRegisterERC20AsTokenResponse defines the response structure for executing a
+// MsgRegisterERC20AsToken message.
+message MsgRegisterERC20AsTokenResponse {}
 
 // MsgUpdateParams is the Msg/UpdateParams request type for Erc20 parameters.
 // Since: cosmos-sdk 0.47

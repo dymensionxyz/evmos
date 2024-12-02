@@ -22,6 +22,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 
+	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
 	ibctransfertypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -30,11 +31,15 @@ var (
 	_ sdk.Msg = &MsgConvertCoin{}
 	_ sdk.Msg = &MsgConvertERC20{}
 	_ sdk.Msg = &MsgUpdateParams{}
+	_ sdk.Msg = &MsgRegisterERC20AsToken{}
+
+	_ legacytx.LegacyMsg = &MsgRegisterERC20AsToken{}
 )
 
 const (
-	TypeMsgConvertCoin  = "convert_coin"
-	TypeMsgConvertERC20 = "convert_ERC20"
+	TypeMsgConvertCoin          = "convert_coin"
+	TypeMsgConvertERC20         = "convert_ERC20"
+	TypeMsgRegisterERC20AsToken = "register_ERC20_as_token" //nolint:gosec
 )
 
 // NewMsgConvertCoin creates a new instance of MsgConvertCoin
@@ -127,6 +132,42 @@ func (msg MsgConvertERC20) GetSignBytes() []byte {
 func (msg MsgConvertERC20) GetSigners() []sdk.AccAddress {
 	addr := common.HexToAddress(msg.Sender)
 	return []sdk.AccAddress{addr.Bytes()}
+}
+
+// NewMsgRegisterERC20AsToken creates a new instance of MsgRegisterERC20AsToken
+func NewMsgRegisterERC20AsToken(contract common.Address) *MsgRegisterERC20AsToken { //nolint: interfacer
+	return &MsgRegisterERC20AsToken{
+		ContractAddress: contract.String(),
+	}
+}
+
+// Route should return the name of the module
+func (msg MsgRegisterERC20AsToken) Route() string { return RouterKey }
+
+// Type should return the action
+func (msg MsgRegisterERC20AsToken) Type() string { return TypeMsgRegisterERC20AsToken }
+
+// ValidateBasic runs stateless checks on the message
+func (msg MsgRegisterERC20AsToken) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Sender); err != nil {
+		return errorsmod.Wrap(err, "invalid sender address")
+	}
+
+	if !common.IsHexAddress(msg.ContractAddress) {
+		return errorsmod.Wrapf(errortypes.ErrInvalidAddress, "invalid contract hex address '%s'", msg.ContractAddress)
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (msg MsgRegisterERC20AsToken) GetSignBytes() []byte {
+	return sdk.MustSortJSON(AminoCdc.MustMarshalJSON(&msg))
+}
+
+// GetSigners defines whose signature is required
+func (msg MsgRegisterERC20AsToken) GetSigners() []sdk.AccAddress {
+	addr := sdk.MustAccAddressFromBech32(msg.Sender)
+	return []sdk.AccAddress{addr}
 }
 
 // GetSigners returns the expected signers for a MsgUpdateParams message.

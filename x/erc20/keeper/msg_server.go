@@ -118,6 +118,54 @@ func (k Keeper) ConvertERC20(
 	}
 }
 
+// RegisterERC20 creates a Cosmos coin and registers the token pair between the
+// coin and the ERC20
+func (k Keeper) RegisterERC20AsToken(goCtx context.Context, msg *types.MsgRegisterERC20AsToken) (*types.MsgRegisterERC20AsTokenResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	// Check if ERC20 is enabled
+	if !k.IsERC20Enabled(ctx) {
+		return nil, errorsmod.Wrap(types.ErrERC20Disabled, "erc20 module is disabled")
+	}
+
+	contract := common.HexToAddress(msg.ContractAddress)
+	pair, err := k.RegisterERC20(ctx, contract)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the newly created denom to be emitted
+	strContract := contract.String()
+	m, ok := k.bankKeeper.GetDenomMetaData(ctx, types.CreateDenom(strContract))
+	if !ok {
+		return nil, errorsmod.Wrapf(
+			types.ErrInternalTokenPair, "denom metadata not found for: %s", strContract,
+		)
+	}
+
+	if len(m.DenomUnits) != 2 {
+		return nil, errorsmod.Wrapf(
+			types.ErrInternalTokenPair, "denom metadata not found for: %s", strContract,
+		)
+	}
+
+	// FIXME: charge creation fee
+
+	ctx.EventManager().EmitEvents(
+		sdk.Events{
+			sdk.NewEvent(
+				types.EventTypeRegisterERC20,
+				sdk.NewAttribute(types.AttributeKeyCosmosCoin, pair.Denom),
+				sdk.NewAttribute(types.AttributeKeyERC20Token, pair.Erc20Address),
+				sdk.NewAttribute(types.AttributeKeyDisplay, m.Display),
+				sdk.NewAttribute(types.AttributeKeySymbol, m.Symbol),
+			),
+		},
+	)
+
+	return &types.MsgRegisterERC20AsTokenResponse{}, nil
+}
+
 // convertCoinNativeCoin handles the coin conversion for a native Cosmos coin
 // token pair:
 //   - escrow coins on module account
