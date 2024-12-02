@@ -74,9 +74,7 @@ func (k *Keeper) NewEVM(
 	{
 		// set up the custom precompiled contracts
 		var contracts []vm.PrecompiledContract
-		for _, contract := range []CustomPrecompiledContractI{
-			NewBech32CustomPrecompiledContract(),
-		} {
+		for _, contract := range GetCustomPrecompiledContractsAtVersion(cfg.Params.PrecompilesVersion) {
 			executors := contract.GetMethodExecutors()
 			if len(executors) == 0 {
 				panic(fmt.Sprintf("no executors found for custom precompiled contract %s", contract.GetName()))

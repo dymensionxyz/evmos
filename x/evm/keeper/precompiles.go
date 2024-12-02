@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"slices"
 
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 
@@ -116,6 +117,45 @@ func (n notSupportedCustomPrecompiledContractMethodExecutor) ReadOnly() bool {
 	return n.readOnly
 }
 
+// register
+type registeredCustomPrecompiledContract struct {
+	// contract is the custom precompiled contract
+	contract CustomPrecompiledContractI
+	// enableAtVersion is the version at which the custom precompiled contract is enabled
+	enableAtVersion uint32
+}
+
+var registeredCustomPrecompiledContracts = make(map[common.Address]registeredCustomPrecompiledContract)
+
+// RegisterCustomPrecompiledContract registers a custom precompiled contract with the given address and enable version.
+func RegisterCustomPrecompiledContract(contract CustomPrecompiledContractI, enableAtVersion uint32) {
+	addr := contract.GetAddress()
+	if _, ok := registeredCustomPrecompiledContracts[addr]; ok {
+		panic(fmt.Sprintf("custom precompiled contract %s already registered", addr.Hex()))
+	}
+	registeredCustomPrecompiledContracts[addr] = registeredCustomPrecompiledContract{
+		contract:        contract,
+		enableAtVersion: enableAtVersion,
+	}
+}
+
+// GetCustomPrecompiledContractsAtVersion returns the custom precompiled contracts at the given version.
+func GetCustomPrecompiledContractsAtVersion(version uint32) []CustomPrecompiledContractI {
+	var contracts []CustomPrecompiledContractI
+	for _, r := range registeredCustomPrecompiledContracts {
+		if r.enableAtVersion <= version {
+			contracts = append(contracts, r.contract)
+		}
+	}
+
+	// apply some extra sorting so everything is deterministic
+	slices.SortFunc(contracts, func(i, j CustomPrecompiledContractI) int {
+		return bytes.Compare(i.GetAddress().Bytes(), j.GetAddress().Bytes())
+	})
+
+	return contracts
+}
+
 func init() {
 	generatedCpcAddresses := make(map[common.Address]struct{})
 
@@ -139,4 +179,6 @@ func init() {
 	}
 
 	CpcBech32FixedAddress = generateCpcAddress(cpcAddrNonceBech32)
+
+	RegisterCustomPrecompiledContract(NewBech32CustomPrecompiledContract(), 0)
 }
