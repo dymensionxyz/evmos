@@ -16,6 +16,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math/big"
 
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -69,7 +70,30 @@ func (k *Keeper) NewEVM(
 		tracer = k.Tracer(ctx, msg, cfg.ChainConfig)
 	}
 	vmConfig := k.VMConfig(ctx, msg, cfg, tracer)
-	return vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
+	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
+	{
+		// set up the custom precompiled contracts
+		var contracts []vm.PrecompiledContract
+		for _, contract := range []CustomPrecompiledContractI{
+			NewBech32CustomPrecompiledContract(),
+		} {
+			executors := contract.GetMethodExecutors()
+			if len(executors) == 0 {
+				panic(fmt.Sprintf("no executors found for custom precompiled contract %s", contract.GetName()))
+			}
+
+			var methods []vm.CustomPrecompiledContractMethod
+			for _, executor := range executors {
+				methods = append(methods, NewCustomPrecompiledContractMethod(
+					executor,
+				))
+			}
+
+			contracts = append(contracts, vm.NewCustomPrecompiledContract(contract.GetAddress(), methods, contract.GetName()))
+		}
+		evm = evm.WithCustomPrecompiledContracts(contracts...)
+	}
+	return evm
 }
 
 // GetHashFn implements vm.GetHashFunc for Ethermint. It handles 3 cases:
