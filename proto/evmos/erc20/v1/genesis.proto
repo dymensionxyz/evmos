@@ -21,4 +21,9 @@ message Params {
   // enable_evm_hook is the parameter to enable the EVM hook that converts an ERC20 token to a Cosmos
   // Coin by transferring the Tokens through a MsgEthereumTx to the ModuleAddress Ethereum address.
   bool enable_evm_hook = 2 [(gogoproto.customname) = "EnableEVMHook"];
+
+  string registration_fee = 3 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.nullable) = false
+  ];
 }
