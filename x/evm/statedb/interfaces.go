@@ -31,6 +31,12 @@ type ExtStateDB interface {
 	AppendJournalEntry(JournalEntry)
 }
 
+// StateDbWithExt extends the StateDB interface to provide additional methods
+type StateDbWithExt interface {
+	vm.StateDB
+	ExposeSdkContext() sdk.Context
+}
+
 // Keeper provide underlying storage of StateDB
 type Keeper interface {
 	// Read methods

@@ -36,7 +36,10 @@ type revision struct {
 	journalIndex int
 }
 
-var _ vm.StateDB = &StateDB{}
+var (
+	_ vm.StateDB     = &StateDB{}
+	_ StateDbWithExt = &StateDB{}
+)
 
 // StateDB structs within the ethereum protocol are used to store anything
 // within the merkle trie. StateDBs take care of caching and storing
@@ -480,4 +483,8 @@ func (s *StateDB) Commit() error {
 		}
 	}
 	return nil
+}
+
+func (s *StateDB) ExposeSdkContext() sdk.Context {
+	return s.ctx
 }
