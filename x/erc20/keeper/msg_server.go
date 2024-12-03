@@ -25,6 +25,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -116,6 +117,56 @@ func (k Keeper) ConvertERC20(
 	default:
 		return nil, types.ErrUndefinedOwner
 	}
+}
+
+// RegisterERC20 creates a Cosmos coin and registers the token pair between the
+// coin and the ERC20
+func (k Keeper) RegisterERC20AsToken(goCtx context.Context, msg *types.MsgRegisterERC20AsToken) (*types.MsgRegisterERC20AsTokenResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	// Check if ERC20 is enabled
+	if !k.IsERC20Enabled(ctx) {
+		return nil, errorsmod.Wrap(types.ErrERC20Disabled, "erc20 module is disabled")
+	}
+
+	contract := common.HexToAddress(msg.ContractAddress)
+	pair, err := k.RegisterERC20(ctx, contract)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the newly created denom to be emitted
+	strContract := contract.String()
+	m, ok := k.bankKeeper.GetDenomMetaData(ctx, types.CreateDenom(strContract))
+	if !ok {
+		return nil, errorsmod.Wrapf(
+			types.ErrInternalTokenPair, "denom metadata not found for: %s", strContract,
+		)
+	}
+
+	// Charge registration fee
+	registrationFee := k.GetRegistrationFee(ctx)
+	if !registrationFee.IsZero() {
+		senderAddr := sdk.MustAccAddressFromBech32(msg.Sender)
+		fees := sdk.NewCoins(sdk.NewCoin(k.evmKeeper.GetParams(ctx).EvmDenom, registrationFee))
+		if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, senderAddr, authtypes.FeeCollectorName, fees); err != nil {
+			return nil, errorsmod.Wrap(err, "failed to charge registration fee")
+		}
+	}
+
+	ctx.EventManager().EmitEvents(
+		sdk.Events{
+			sdk.NewEvent(
+				types.EventTypeRegisterERC20,
+				sdk.NewAttribute(types.AttributeKeyCosmosCoin, pair.Denom),
+				sdk.NewAttribute(types.AttributeKeyERC20Token, pair.Erc20Address),
+				sdk.NewAttribute(types.AttributeKeyDisplay, m.Display),
+				sdk.NewAttribute(types.AttributeKeySymbol, m.Symbol),
+			),
+		},
+	)
+
+	return &types.MsgRegisterERC20AsTokenResponse{}, nil
 }
 
 // convertCoinNativeCoin handles the coin conversion for a native Cosmos coin

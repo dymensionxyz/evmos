@@ -88,6 +88,12 @@ func (k Keeper) RegisterERC20(
 		)
 	}
 
+	if len(metadata.DenomUnits) != 2 {
+		return nil, errorsmod.Wrapf(
+			types.ErrInternalTokenPair, "decimals not found for: %s", contract.String(),
+		)
+	}
+
 	pair := types.NewTokenPair(contract, metadata.Name, types.OWNER_EXTERNAL)
 	k.SetTokenPair(ctx, pair)
 	k.SetDenomMap(ctx, pair.Denom, pair.GetID())
