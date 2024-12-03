@@ -21,6 +21,8 @@ message Params {
   // allow_unprotected_txs defines if replay-protected (i.e non EIP155
   // signed) transactions can be executed on the state machine.
   bool allow_unprotected_txs = 6;
+  // precompiles_version is used to determine precompiles to enable. Default is zero, which enable precompiles of version 0.
+  uint32 precompiles_version = 7;
 }
 
 // ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int values

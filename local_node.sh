@@ -69,6 +69,9 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	jq '.app_state["evm"]["params"]["evm_denom"]="aevmos"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 	jq '.app_state["inflation"]["params"]["mint_denom"]="aevmos"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
+	# Workaround feemarket params (somehow it is 20b aevmos)
+	jq '.app_state["feemarket"]["params"]["min_gas_price"]="0"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+
 	# Set gas limit in genesis
 	jq '.consensus_params["block"]["max_gas"]="10000000"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
@@ -142,7 +145,8 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	jq -r --arg total_supply "$total_supply" '.app_state["bank"]["supply"][0]["amount"]=$total_supply' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Sign genesis transaction
-	evmosd gentx "${KEYS[0]}" 1000000000000000000000aevmos --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
+	BASE_FEE="$(cat "$HOMEDIR/config/genesis.json" | jq -r .app_state.feemarket.params.base_fee)"
+	evmosd gentx "${KEYS[0]}" 1000000000000000000000aevmos --gas-prices "$BASE_FEE"aevmos --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
 	## In case you want to create multiple validators at genesis
 	## 1. Back to `evmosd keys add` step, init more keys
 	## 2. Back to `evmosd add-genesis-account` step, add balance for those
