@@ -3,6 +3,7 @@ package types_test
 import (
 	"testing"
 
+	"cosmossdk.io/math"
 	"github.com/evmos/evmos/v12/x/erc20/types"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,13 +25,13 @@ func (suite *ParamsTestSuite) TestParamsValidate() {
 		{"default", types.DefaultParams(), false},
 		{
 			"valid",
-			types.NewParams(true, true),
+			types.NewParams(true, true, math.NewIntWithDecimal(1, 18)),
 			false,
 		},
 		{
 			"empty",
 			types.Params{},
-			false,
+			true,
 		},
 	}
 
@@ -43,9 +44,4 @@ func (suite *ParamsTestSuite) TestParamsValidate() {
 			suite.Require().NoError(err, tc.name)
 		}
 	}
-}
-
-func (suite *ParamsTestSuite) TestParamsValidatePriv() {
-	suite.Require().Error(types.ValidateBool(1))
-	suite.Require().NoError(types.ValidateBool(true))
 }

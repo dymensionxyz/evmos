@@ -49,6 +49,7 @@ func NewTxCmd() *cobra.Command {
 	txCmd.AddCommand(
 		NewConvertCoinCmd(),
 		NewConvertERC20Cmd(),
+		NewRegisterERC20AsTokenCmd(),
 	)
 	return txCmd
 }
@@ -151,16 +152,48 @@ func NewConvertERC20Cmd() *cobra.Command {
 	return cmd
 }
 
-// NewRegisterCoinProposalCmd implements the command to submit a community-pool-spend proposal
-//
-//nolint:staticcheck
+// NewRegisterERC20AsTokenCmd returns a CLI command handler for registering an ERC20 token
+func NewRegisterERC20AsTokenCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "register-erc20 [contract-address]",
+		Short: "Register an ERC20 contract as convertible token",
+		Long:  "Register an ERC20 token to the erc20 module to allow conversion to cosmos coin.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			msg := &types.MsgRegisterERC20AsToken{
+				ContractAddress: args[0],
+				Sender:          cliCtx.GetFromAddress().String(),
+			}
+
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return tx.GenerateOrBroadcastTxCLI(cliCtx, cmd.Flags(), msg)
+		},
+	}
+
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  proposals                                 */
+/* -------------------------------------------------------------------------- */
+
+// NewRegisterCoinProposalCmd implements the command to submit a register coin proposal
 func NewRegisterCoinProposalCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "register-coin METADATA_FILE",
+		Use:   "register-coin-proposal METADATA_FILE",
 		Args:  cobra.ExactArgs(1),
 		Short: "Submit a register coin proposal",
 		Long:  `Submit a proposal to register a Cosmos coin to the erc20 along with an initial deposit. The proposal details must be supplied via a JSON file.`,
-		Example: fmt.Sprintf(`$ %s tx gov submit-legacy-proposal register-coin metadata.json --from=<key_or_address>
+		Example: fmt.Sprintf(`$ %s tx gov submit-legacy-proposal register-coin-proposal metadata.json --from=<key_or_address>
 
 Where metadata.json contains (example):
 
@@ -250,16 +283,14 @@ Where metadata.json contains (example):
 	return cmd
 }
 
-// NewRegisterERC20ProposalCmd implements the command to submit a community-pool-spend proposal
-//
-//nolint:staticcheck
+// NewRegisterERC20ProposalCmd implements the command to submit a register erc20 proposal
 func NewRegisterERC20ProposalCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "register-erc20 ERC20_ADDRESS...",
+		Use:     "register-erc20-proposal ERC20_ADDRESS...",
 		Args:    cobra.MinimumNArgs(1),
 		Short:   "Submit a proposal to register ERC20 token",
-		Long:    "Submit a proposal to register ERC20 tokens along with an initial deposit. To register multiple tokens in one proposal pass them after each other e.g. `register-erc20 <contract-address1> <contract-address2>` ",
-		Example: fmt.Sprintf("$ %s tx gov submit-legacy-proposal register-erc20 <contract-address> --from=<key_or_address>", version.AppName),
+		Long:    "Submit a proposal to register ERC20 tokens along with an initial deposit. To register multiple tokens in one proposal pass them after each other e.g. `register-erc20-proposal <contract-address1> <contract-address2>` ",
+		Example: fmt.Sprintf("$ %s tx gov submit-legacy-proposal register-erc20-proposal <contract-address> --from=<key_or_address>", version.AppName),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
