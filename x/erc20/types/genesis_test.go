@@ -3,6 +3,7 @@ package types_test
 import (
 	"testing"
 
+	"cosmossdk.io/math"
 	"github.com/evmos/evmos/v12/x/erc20/types"
 	"github.com/stretchr/testify/suite"
 )
@@ -19,7 +20,8 @@ func TestGenesisTestSuite(t *testing.T) {
 }
 
 func (suite *GenesisTestSuite) TestValidateGenesis() {
-	newGen := types.NewGenesisState(types.DefaultParams(), []types.TokenPair{})
+	customParams := types.DefaultParams()
+	customParams.RegistrationFee = math.NewIntWithDecimal(100, 18)
 
 	testCases := []struct {
 		name     string
@@ -27,23 +29,19 @@ func (suite *GenesisTestSuite) TestValidateGenesis() {
 		expPass  bool
 	}{
 		{
-			name:     "valid genesis constructor",
-			genState: &newGen,
-			expPass:  true,
-		},
-		{
 			name:     "default",
 			genState: types.DefaultGenesisState(),
 			expPass:  true,
 		},
+		// valid genesis - with custom params
 		{
-			name: "valid genesis",
+			name: "valid genesis - with custom params",
 			genState: &types.GenesisState{
-				Params:     types.DefaultParams(),
-				TokenPairs: []types.TokenPair{},
+				Params: customParams,
 			},
 			expPass: true,
 		},
+		// valid genesis - with tokens pairs
 		{
 			name: "valid genesis - with tokens pairs",
 			genState: &types.GenesisState{
@@ -130,10 +128,9 @@ func (suite *GenesisTestSuite) TestValidateGenesis() {
 			expPass: false,
 		},
 		{
-			// Voting period cant be zero
 			name:     "empty genesis",
 			genState: &types.GenesisState{},
-			expPass:  true,
+			expPass:  false,
 		},
 	}
 

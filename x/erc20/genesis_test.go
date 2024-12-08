@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"cosmossdk.io/math"
 	"github.com/stretchr/testify/suite"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -70,14 +71,17 @@ func (suite *GenesisTestSuite) TestERC20InitGenesis() {
 	testCases := []struct {
 		name         string
 		genesisState types.GenesisState
+		expectedErr  bool
 	}{
 		{
-			"empty genesis",
+			"empty genesis - expected error",
 			types.GenesisState{},
+			true,
 		},
 		{
 			"default genesis",
 			*types.DefaultGenesisState(),
+			false,
 		},
 		{
 			"custom genesis",
@@ -91,10 +95,17 @@ func (suite *GenesisTestSuite) TestERC20InitGenesis() {
 						ContractOwner: types.OWNER_MODULE,
 					},
 				}),
+			false,
 		},
 	}
 
 	for _, tc := range testCases {
+		if tc.expectedErr {
+			suite.Require().Panics(func() {
+				erc20.InitGenesis(suite.ctx, suite.app.Erc20Keeper, suite.app.AccountKeeper, tc.genesisState)
+			})
+			continue
+		}
 
 		suite.Require().NotPanics(func() {
 			erc20.InitGenesis(suite.ctx, suite.app.Erc20Keeper, suite.app.AccountKeeper, tc.genesisState)
@@ -112,14 +123,13 @@ func (suite *GenesisTestSuite) TestERC20InitGenesis() {
 }
 
 func (suite *GenesisTestSuite) TestErc20ExportGenesis() {
+	customParams := types.DefaultParams()
+	customParams.RegistrationFee = math.NewIntWithDecimal(100, 18)
+
 	testGenCases := []struct {
 		name         string
 		genesisState types.GenesisState
 	}{
-		{
-			"empty genesis",
-			types.GenesisState{},
-		},
 		{
 			"default genesis",
 			*types.DefaultGenesisState(),
@@ -127,7 +137,7 @@ func (suite *GenesisTestSuite) TestErc20ExportGenesis() {
 		{
 			"custom genesis",
 			types.NewGenesisState(
-				types.DefaultParams(),
+				customParams,
 				[]types.TokenPair{
 					{
 						Erc20Address:  "0x5dCA2483280D9727c80b5518faC4556617fb19ZZ",
@@ -149,6 +159,7 @@ func (suite *GenesisTestSuite) TestErc20ExportGenesis() {
 			tokenPairs := suite.app.Erc20Keeper.GetTokenPairs(suite.ctx)
 			if len(tokenPairs) > 0 {
 				suite.Require().Equal(genesisExported.TokenPairs, tokenPairs)
+				suite.Require().Equal(genesisExported.Params.RegistrationFee, customParams.RegistrationFee)
 			} else {
 				suite.Require().Len(genesisExported.TokenPairs, 0)
 			}

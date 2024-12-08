@@ -69,7 +69,7 @@ func (p Params) Validate() error {
 		return err
 	}
 
-	if p.RegistrationFee.IsNegative() {
+	if p.RegistrationFee.IsNil() || p.RegistrationFee.IsNegative() {
 		return fmt.Errorf("registration fee cannot be negative: %s", p.RegistrationFee)
 	}
 
