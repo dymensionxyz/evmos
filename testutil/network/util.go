@@ -43,6 +43,7 @@ import (
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+
 	inflationtypes "github.com/evmos/evmos/v12/x/inflation/types"
 
 	"github.com/evmos/evmos/v12/server"
@@ -244,6 +245,7 @@ func initGenFiles(cfg Config, genAccounts []authtypes.GenesisAccount, genBalance
 	cfg.Codec.MustUnmarshalJSON(cfg.GenesisState[evmtypes.ModuleName], &evmGenState)
 
 	evmGenState.Params.EvmDenom = cfg.BondDenom
+	evmGenState.Params.GasDenom = cfg.BondDenom
 	cfg.GenesisState[evmtypes.ModuleName] = cfg.Codec.MustMarshalJSON(&evmGenState)
 
 	appGenStateJSON, err := json.MarshalIndent(cfg.GenesisState, "", "  ")

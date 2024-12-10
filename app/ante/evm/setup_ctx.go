@@ -26,6 +26,7 @@ import (
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
@@ -160,7 +161,7 @@ func (vbd EthValidateBasicDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simu
 	baseFee := vbd.evmKeeper.GetBaseFee(ctx, ethCfg)
 	enableCreate := evmParams.GetEnableCreate()
 	enableCall := evmParams.GetEnableCall()
-	evmDenom := evmParams.GetEvmDenom()
+	gasDenom := evmParams.GasDenom
 
 	for _, msg := range protoTx.GetMsgs() {
 		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
@@ -191,7 +192,7 @@ func (vbd EthValidateBasicDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simu
 			return ctx, errorsmod.Wrap(ethtypes.ErrTxTypeNotSupported, "dynamic fee tx not supported")
 		}
 
-		txFee = txFee.Add(sdk.Coin{Denom: evmDenom, Amount: sdkmath.NewIntFromBigInt(txData.Fee())})
+		txFee = txFee.Add(sdk.Coin{Denom: gasDenom, Amount: sdkmath.NewIntFromBigInt(txData.Fee())})
 	}
 
 	if !authInfo.Fee.Amount.IsEqual(txFee) {

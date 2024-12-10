@@ -21,6 +21,9 @@ message Params {
   // allow_unprotected_txs defines if replay-protected (i.e non EIP155
   // signed) transactions can be executed on the state machine.
   bool allow_unprotected_txs = 6;
+  // gas_denom represents the token denomination used to pay for gas fees.
+  // May be an arbitrary SDK denom.
+  string gas_denom = 7 [(gogoproto.moretags) = "yaml:\"gas_denom\""];
 }
 
 // ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int values

@@ -21,8 +21,8 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
-
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
@@ -139,8 +139,8 @@ func (mfd EthMempoolFeeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulat
 		return next(ctx, tx, simulate)
 	}
 
-	evmDenom := evmParams.GetEvmDenom()
-	minGasPrice := ctx.MinGasPrices().AmountOf(evmDenom)
+	gasDenom := evmParams.GasDenom
+	minGasPrice := ctx.MinGasPrices().AmountOf(gasDenom)
 
 	for _, msg := range tx.GetMsgs() {
 		ethMsg, ok := msg.(*evmtypes.MsgEthereumTx)
