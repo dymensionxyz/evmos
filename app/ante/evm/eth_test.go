@@ -475,11 +475,11 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 				err = testutil.FundAccount(ctx, suite.app.BankKeeper, sender, coins)
 				suite.Require().NoError(err)
 
-				// while SDK balance is funded with IBC coins
+				// check that SDK balance is funded with IBC coins
 				senderBalances := suite.app.BankKeeper.GetBalance(ctx, sender, ibcBase)
 				suite.Require().True(senderBalances.IsPositive())
 
-				// unsure that the fee collector balance is empty initially
+				// ensure that the fee collector balance is empty initially
 				feeCollectorInitialBalance := suite.app.BankKeeper.GetBalance(ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
 				suite.Require().True(feeCollectorInitialBalance.IsZero())
 
@@ -553,7 +553,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 				senderBalances := suite.app.BankKeeper.GetAllBalances(ctx, sender)
 				suite.Require().True(senderBalances.IsZero())
 
-				// unsure that the fee collector balance is empty initially
+				// ensure that the fee collector balance is empty initially
 				feeCollectorInitialBalance := suite.app.BankKeeper.GetBalance(ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
 				suite.Require().True(feeCollectorInitialBalance.IsZero())
 
