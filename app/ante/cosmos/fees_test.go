@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/feegrant"
 
 	cosmosante "github.com/evmos/evmos/v12/app/ante/cosmos"
+	"github.com/evmos/evmos/v12/app/ante/evm"
 	"github.com/evmos/evmos/v12/testutil"
 	testutiltx "github.com/evmos/evmos/v12/testutil/tx"
 	"github.com/evmos/evmos/v12/utils"
@@ -29,6 +30,7 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 		fgAddr, _   = testutiltx.NewAccAddressAndKey()
 		initBalance = sdk.NewInt(1e18)
 		lowGasPrice = math.NewInt(1)
+		bigGasPrice = math.NewInt(1_000_000_000_000)
 		zero        = sdk.ZeroInt()
 	)
 
@@ -39,6 +41,7 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 		rewards     math.Int
 		gas         uint64
 		gasPrice    *math.Int
+		gasDenom    string
 		feeGranter  sdk.AccAddress
 		checkTx     bool
 		simulate    bool
@@ -283,6 +286,8 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 			balance:     zero,
 			rewards:     zero,
 			gas:         10_000_000,
+			gasPrice:    &bigGasPrice,
+			gasDenom:    ibcBase,
 			checkTx:     false,
 			simulate:    false,
 			expPass:     true,
@@ -332,6 +337,17 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 				// unsure that the fee collector balance is empty initially
 				feeCollectorInitialBalance := suite.app.BankKeeper.GetBalance(suite.ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
 				suite.Require().True(feeCollectorInitialBalance.IsZero())
+
+				// for this case to work properly, we need to set a dynamic fee checker
+				dfd = cosmosante.NewDeductFeeDecorator(
+					suite.app.AccountKeeper,
+					suite.app.BankKeeper,
+					suite.app.Erc20Keeper,
+					suite.app.DistrKeeper,
+					suite.app.FeeGrantKeeper,
+					suite.app.StakingKeeper,
+					evm.NewDynamicFeeChecker(suite.app.EvmKeeper),
+				)
 			},
 			postCheck: func() {
 				// check the fee collector balance, it should be positive (initially it was empty)
@@ -354,7 +370,6 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 				suite.app.DistrKeeper,
 				suite.app.FeeGrantKeeper,
 				suite.app.StakingKeeper,
-				//evm.NewDynamicFeeChecker(suite.app.EvmKeeper),
 				nil,
 			)
 
@@ -376,6 +391,7 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 				GasPrice:   tc.gasPrice,
 				FeeGranter: tc.feeGranter,
 				Msgs:       []sdk.Msg{msg},
+				GasDenom:   tc.gasDenom,
 			}
 
 			if tc.malleate != nil {

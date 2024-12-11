@@ -147,7 +147,7 @@ func (dfd DeductFeeDecorator) deductFee(ctx sdk.Context, sdkTx sdk.Tx, fees sdk.
 	// If the account balance is not sufficient, try to withdraw enough staking rewards
 	err := anteutils.ClaimStakingRewardsIfNecessary(ctx, dfd.bankKeeper, dfd.distributionKeeper, dfd.stakingKeeper, deductFeesFromAcc.GetAddress(), fees)
 	if err != nil {
-		return fmt.Errorf("claim staking rewards if necessary: %w", err)
+		return fmt.Errorf("insufficient funds and failed to claim sufficient staking rewards: %w", err)
 	}
 
 	err = anteutils.DeductFees(dfd.bankKeeper, dfd.erc20Keeper, ctx, deductFeesFromAcc, fees)

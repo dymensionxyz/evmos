@@ -53,6 +53,8 @@ type CosmosTxArgs struct {
 	FeeGranter sdk.AccAddress
 	// Msgs slice of messages to include on the tx
 	Msgs []sdk.Msg
+	// GasDenom is the denomination of the gas
+	GasDenom string
 }
 
 // PrepareCosmosTx creates a cosmos tx and signs it with the provided messages and private key.
@@ -66,9 +68,14 @@ func PrepareCosmosTx(
 
 	txBuilder.SetGasLimit(args.Gas)
 
+	gasDenom := utils.BaseDenom
+	if args.GasDenom != "" {
+		gasDenom = args.GasDenom
+	}
+
 	var fees sdk.Coins
 	if args.GasPrice != nil {
-		fees = sdk.Coins{{Denom: utils.BaseDenom, Amount: args.GasPrice.MulRaw(int64(args.Gas))}}
+		fees = sdk.Coins{{Denom: gasDenom, Amount: args.GasPrice.MulRaw(int64(args.Gas))}}
 	} else {
 		fees = sdk.Coins{DefaultFee}
 	}
