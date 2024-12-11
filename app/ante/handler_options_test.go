@@ -1,12 +1,10 @@
 package ante_test
 
 import (
-	ethante "github.com/evmos/evmos/v12/app/ante/evm"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/types"
-
 	"github.com/evmos/evmos/v12/app"
 	"github.com/evmos/evmos/v12/app/ante"
+	"github.com/evmos/evmos/v12/encoding"
+	"github.com/evmos/evmos/v12/types"
 )
 
 func (suite *AnteTestSuite) TestValidateHandlerOptions() {
@@ -134,23 +132,6 @@ func (suite *AnteTestSuite) TestValidateHandlerOptions() {
 			false,
 		},
 		{
-			"fail - empty tx fee checker",
-			ante.HandlerOptions{
-				Cdc:                suite.app.AppCodec(),
-				AccountKeeper:      suite.app.AccountKeeper,
-				BankKeeper:         suite.app.BankKeeper,
-				DistributionKeeper: suite.app.DistrKeeper,
-				IBCKeeper:          suite.app.IBCKeeper,
-				StakingKeeper:      suite.app.StakingKeeper,
-				FeeMarketKeeper:    suite.app.FeeMarketKeeper,
-				EvmKeeper:          suite.app.EvmKeeper,
-				SigGasConsumer:     ante.SigVerificationGasConsumer,
-				SignModeHandler:    suite.app.GetTxConfig().SignModeHandler(),
-				TxFeeChecker:       nil,
-			},
-			false,
-		},
-		{
 			"success - default app options",
 			ante.HandlerOptions{
 				Cdc:                    suite.app.AppCodec(),
@@ -166,7 +147,6 @@ func (suite *AnteTestSuite) TestValidateHandlerOptions() {
 				SignModeHandler:        encoding.MakeConfig(app.ModuleBasics).TxConfig.SignModeHandler(),
 				SigGasConsumer:         ante.SigVerificationGasConsumer,
 				MaxTxGasWanted:         40000000,
-				TxFeeChecker:           ethante.NewDynamicFeeChecker(suite.app.EvmKeeper),
 			},
 			true,
 		},

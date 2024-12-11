@@ -25,6 +25,7 @@ import (
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+
 	anteutils "github.com/evmos/evmos/v12/app/ante/utils"
 )
 
@@ -41,7 +42,6 @@ type DeductFeeDecorator struct {
 	distributionKeeper anteutils.DistributionKeeper
 	feegrantKeeper     authante.FeegrantKeeper
 	stakingKeeper      anteutils.StakingKeeper
-	txFeeChecker       anteutils.TxFeeChecker
 }
 
 // NewDeductFeeDecorator returns a new DeductFeeDecorator.
@@ -51,19 +51,13 @@ func NewDeductFeeDecorator(
 	dk anteutils.DistributionKeeper,
 	fk authante.FeegrantKeeper,
 	sk anteutils.StakingKeeper,
-	tfc anteutils.TxFeeChecker,
 ) DeductFeeDecorator {
-	if tfc == nil {
-		tfc = checkTxFeeWithValidatorMinGasPrices
-	}
-
 	return DeductFeeDecorator{
 		accountKeeper:      ak,
 		bankKeeper:         bk,
 		distributionKeeper: dk,
 		feegrantKeeper:     fk,
 		stakingKeeper:      sk,
-		txFeeChecker:       tfc,
 	}
 }
 
@@ -86,7 +80,7 @@ func (dfd DeductFeeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bo
 
 	fee := feeTx.GetFee()
 	if !simulate {
-		fee, priority, err = dfd.txFeeChecker(ctx, feeTx)
+		fee, priority, err = checkTxFeeWithValidatorMinGasPrices(ctx, feeTx)
 		if err != nil {
 			return ctx, err
 		}
@@ -186,7 +180,7 @@ func checkTxFeeWithValidatorMinGasPrices(ctx sdk.Context, feeTx sdk.FeeTx) (sdk.
 		}
 	}
 
-	priority := getTxPriority(feeCoins, int64(gas)) //#nosec G701 -- gosec warning about integer overflow is not relevant here
+	priority := getTxPriority(feeCoins, int64(gas)) // #nosec G701 -- gosec warning about integer overflow is not relevant here
 	return feeCoins, priority, nil
 }
 
@@ -202,7 +196,7 @@ func checkFeeCoinsAgainstMinGasPrices(ctx sdk.Context, feeCoins sdk.Coins, gas u
 
 	// Determine the required fees by multiplying each required minimum gas
 	// price by the gas limit, where fee = ceil(minGasPrice * gasLimit).
-	glDec := sdk.NewDec(int64(gas)) //#nosec G701 -- gosec warning about integer overflow is not relevant here
+	glDec := sdk.NewDec(int64(gas)) // #nosec G701 -- gosec warning about integer overflow is not relevant here
 	for i, gp := range minGasPrices {
 		fee := gp.Amount.Mul(glDec)
 		requiredFees[i] = sdk.NewCoin(gp.Denom, fee.Ceil().RoundInt())

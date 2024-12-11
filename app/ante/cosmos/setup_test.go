@@ -21,7 +21,6 @@ import (
 
 	"github.com/evmos/evmos/v12/app"
 	"github.com/evmos/evmos/v12/app/ante"
-	evmante "github.com/evmos/evmos/v12/app/ante/evm"
 	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
 	"github.com/evmos/evmos/v12/encoding"
 	"github.com/evmos/evmos/v12/ethereum/eip712"
@@ -120,7 +119,6 @@ func (suite *AnteTestSuite) SetupTest() {
 		SignModeHandler:        encodingConfig.TxConfig.SignModeHandler(),
 		SigGasConsumer:         ante.SigVerificationGasConsumer,
 		ExtensionOptionChecker: types.HasDynamicFeeExtensionOption,
-		TxFeeChecker:           evmante.NewDynamicFeeChecker(suite.app.EvmKeeper),
 	})
 
 	suite.anteHandler = anteHandler

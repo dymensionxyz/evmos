@@ -8,6 +8,7 @@ import (
 	sdktestutil "github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/feegrant"
+
 	cosmosante "github.com/evmos/evmos/v12/app/ante/cosmos"
 	"github.com/evmos/evmos/v12/testutil"
 	testutiltx "github.com/evmos/evmos/v12/testutil/tx"
@@ -268,7 +269,7 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 
 				// remove the feegrant keeper from the decorator
 				dfd = cosmosante.NewDeductFeeDecorator(
-					suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.DistrKeeper, nil, suite.app.StakingKeeper, nil,
+					suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.DistrKeeper, nil, suite.app.StakingKeeper,
 				)
 			},
 		},
