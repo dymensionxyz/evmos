@@ -7,12 +7,18 @@ import (
 	"cosmossdk.io/math"
 	sdktestutil "github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/x/feegrant"
+
 	cosmosante "github.com/evmos/evmos/v12/app/ante/cosmos"
 	"github.com/evmos/evmos/v12/testutil"
 	testutiltx "github.com/evmos/evmos/v12/testutil/tx"
 	"github.com/evmos/evmos/v12/utils"
+	inflationtypes "github.com/evmos/evmos/v12/x/inflation/types"
 )
+
+const ibcBase = "ibc/7B2A4F6E798182988D77B6B884919AF617A73503FDAC27C916CD7A69A69013CF"
 
 func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 	var (
@@ -268,8 +274,69 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 
 				// remove the feegrant keeper from the decorator
 				dfd = cosmosante.NewDeductFeeDecorator(
-					suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.DistrKeeper, nil, suite.app.StakingKeeper, nil,
+					suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.Erc20Keeper, suite.app.DistrKeeper, nil, suite.app.StakingKeeper, nil,
 				)
+			},
+		},
+		{
+			name:        "success - IBC gas denom",
+			balance:     zero,
+			rewards:     zero,
+			gas:         10_000_000,
+			checkTx:     false,
+			simulate:    false,
+			expPass:     true,
+			errContains: "",
+			malleate: func() {
+				// update evm params to use IBC denom as gas denom
+				params := suite.app.EvmKeeper.GetParams(suite.ctx)
+				params.GasDenom = ibcBase
+				err := suite.app.EvmKeeper.SetParams(suite.ctx, params)
+				suite.Require().NoError(err)
+
+				// register IBC denom
+				metadataIbc := banktypes.Metadata{
+					Description: "ATOM IBC voucher (channel 14)",
+					Base:        ibcBase,
+					// NOTE: Denom units MUST be increasing
+					DenomUnits: []*banktypes.DenomUnit{
+						{
+							Denom:    ibcBase,
+							Exponent: 0,
+						},
+					},
+					Name:    "ATOM channel-14",
+					Symbol:  "ibcATOM-14",
+					Display: ibcBase,
+				}
+
+				// initial IBC denom
+				err = suite.app.BankKeeper.MintCoins(suite.ctx, inflationtypes.ModuleName, sdk.Coins{sdk.NewInt64Coin(metadataIbc.Base, 1)})
+				suite.Require().NoError(err)
+
+				// register ERC20 representation of IBC denom
+				_, err = suite.app.Erc20Keeper.RegisterCoin(suite.ctx, metadataIbc)
+				suite.Require().NoError(err)
+
+				// fund sender's SDK account: mint IBC coins and convert it to ERC20 tokens
+				coin := sdk.NewCoin(ibcBase, sdk.NewInt(1e16))
+				coins := sdk.NewCoins(coin)
+				sender := sdk.AccAddress(addr.Bytes())
+				err = testutil.FundAccount(suite.ctx, suite.app.BankKeeper, sender, coins)
+				suite.Require().NoError(err)
+
+				// while SDK balance is funded with IBC coins
+				senderBalances := suite.app.BankKeeper.GetBalance(suite.ctx, sender, ibcBase)
+				suite.Require().True(senderBalances.IsPositive())
+
+				// unsure that the fee collector balance is empty initially
+				feeCollectorInitialBalance := suite.app.BankKeeper.GetBalance(suite.ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
+				suite.Require().True(feeCollectorInitialBalance.IsZero())
+			},
+			postCheck: func() {
+				// check the fee collector balance, it should be positive (initially it was empty)
+				balance := suite.app.BankKeeper.GetBalance(suite.ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
+				suite.Require().True(balance.IsPositive())
 			},
 		},
 	}
@@ -281,7 +348,14 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 
 			// Create a new DeductFeeDecorator
 			dfd = cosmosante.NewDeductFeeDecorator(
-				suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.DistrKeeper, suite.app.FeeGrantKeeper, suite.app.StakingKeeper, nil,
+				suite.app.AccountKeeper,
+				suite.app.BankKeeper,
+				suite.app.Erc20Keeper,
+				suite.app.DistrKeeper,
+				suite.app.FeeGrantKeeper,
+				suite.app.StakingKeeper,
+				//evm.NewDynamicFeeChecker(suite.app.EvmKeeper),
+				nil,
 			)
 
 			// prepare the testcase

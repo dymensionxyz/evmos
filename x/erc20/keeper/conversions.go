@@ -29,7 +29,7 @@ func (k Keeper) TryConvertErc20Sdk(
 ) error {
 	pair, err := k.MintingEnabled(ctx, sender, receiver, denom)
 	if err != nil {
-		return fmt.Errorf("minting enabled: %w", err)
+		return fmt.Errorf("check minting is enabled: %w", err)
 	}
 
 	// NOTE: coin fields already validated

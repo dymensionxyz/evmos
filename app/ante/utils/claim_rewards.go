@@ -133,13 +133,23 @@ func DeductFees(bankKeeper BankKeeper, erc20Keeper ERC20Keeper, ctx sdk.Context,
 	// try to pay the fee with ERC20 tokens
 
 	// use a cached context to avoid writing to state if there are not enough ERC20 balance to cover the fees
+	// or some other error occurs
 	cacheCtx, writeFn := ctx.CacheContext()
+
+	// convert ERC20 token from sender's ETH address to SDK coin on sender's SDK address
 	for _, fee := range fees {
-		err := erc20Keeper.TryConvertErc20Sdk(cacheCtx, acc.GetAddress(), types.NewModuleAddress(types.FeeCollectorName), fee.Denom, fee.Amount)
+		err := erc20Keeper.TryConvertErc20Sdk(cacheCtx, acc.GetAddress(), acc.GetAddress(), fee.Denom, fee.Amount)
 		if err != nil {
-			return fmt.Errorf("convert ERC20 to SDK: denom %s: %w", fee.Denom, err)
+			return fmt.Errorf("convert ERC20 token to SDK coin: denom %s: %w", fee.Denom, err)
 		}
 	}
+
+	// now sender should have enough balance to cover the fees
+	err := bankKeeper.SendCoinsFromAccountToModule(cacheCtx, acc.GetAddress(), types.FeeCollectorName, fees)
+	if err != nil {
+		return fmt.Errorf("send coins from account to module: %w", err)
+	}
+
 	writeFn()
 
 	return nil
