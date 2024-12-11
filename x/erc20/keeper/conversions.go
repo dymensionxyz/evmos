@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"fmt"
+	"math/big"
 
 	errorsmod "cosmossdk.io/errors"
 	"cosmossdk.io/math"
@@ -18,6 +19,8 @@ import (
 // The method
 //   - Burns escrowed tokens
 //   - Unescrows coins that have been previously escrowed with ConvertCoin
+//   - Check if coin balance increased by amount
+//   - Check if token balance decreased by amount
 func (k Keeper) TryConvertErc20Sdk(
 	ctx sdk.Context,
 	sender, receiver sdk.AccAddress,
@@ -34,6 +37,7 @@ func (k Keeper) TryConvertErc20Sdk(
 	erc20 := contracts.ERC20MinterBurnerDecimalsContract.ABI
 	contract := pair.GetERC20Contract()
 
+	balanceCoin := k.bankKeeper.GetBalance(ctx, receiver, pair.Denom)
 	balanceToken := k.BalanceOf(ctx, erc20, contract, senderEth)
 	if balanceToken == nil {
 		return errorsmod.Wrap(types.ErrEVMCall, "failed to retrieve balance")
@@ -48,7 +52,7 @@ func (k Keeper) TryConvertErc20Sdk(
 	}
 
 	// Burn escrowed tokens
-	_, err = k.CallEVM(ctx, erc20, types.ModuleAddress, contract, true, "burnCoins", sender, amount.BigInt())
+	_, err = k.CallEVM(ctx, erc20, types.ModuleAddress, contract, true, "burnCoins", senderEth, amount.BigInt())
 	if err != nil {
 		return err
 	}
@@ -59,6 +63,46 @@ func (k Keeper) TryConvertErc20Sdk(
 	if err != nil {
 		return err
 	}
+
+	// Check expected receiver balance after transfer
+	balanceCoinAfter := k.bankKeeper.GetBalance(ctx, receiver, pair.Denom)
+	expCoin := balanceCoin.Add(coins[0])
+	if ok := balanceCoinAfter.IsEqual(expCoin); !ok {
+		return errorsmod.Wrapf(
+			types.ErrBalanceInvariance,
+			"invalid coin balance - expected: %v, actual: %v",
+			expCoin, balanceCoinAfter,
+		)
+	}
+
+	// Check expected Sender balance after transfer
+	tokens := coins[0].Amount.BigInt()
+	balanceTokenAfter := k.BalanceOf(ctx, erc20, contract, senderEth)
+	if balanceTokenAfter == nil {
+		return errorsmod.Wrap(types.ErrEVMCall, "failed to retrieve balance")
+	}
+
+	expToken := big.NewInt(0).Sub(balanceToken, tokens)
+	if r := balanceTokenAfter.Cmp(expToken); r != 0 {
+		return errorsmod.Wrapf(
+			types.ErrBalanceInvariance,
+			"invalid token balance - expected: %v, actual: %v",
+			expToken, balanceTokenAfter,
+		)
+	}
+
+	ctx.EventManager().EmitEvents(
+		sdk.Events{
+			sdk.NewEvent(
+				types.EventTypeConvertERC20,
+				sdk.NewAttribute(sdk.AttributeKeySender, sender.String()),
+				sdk.NewAttribute(types.AttributeKeyReceiver, receiver.String()),
+				sdk.NewAttribute(sdk.AttributeKeyAmount, amount.String()),
+				sdk.NewAttribute(types.AttributeKeyCosmosCoin, pair.Denom),
+				sdk.NewAttribute(types.AttributeKeyERC20Token, pair.Erc20Address),
+			),
+		},
+	)
 
 	return nil
 }
