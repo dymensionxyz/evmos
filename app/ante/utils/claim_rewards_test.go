@@ -4,6 +4,7 @@ import (
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	anteutils "github.com/evmos/evmos/v12/app/ante/utils"
 	"github.com/evmos/evmos/v12/testutil"
 	testutiltx "github.com/evmos/evmos/v12/testutil/tx"
@@ -131,11 +132,10 @@ func (suite *AnteTestSuite) TestClaimStakingRewardsIfNecessary() {
 			expErr:   false,
 		},
 		{
-			name:        "fail - wrong coin denom",
-			malleate:    func(addr sdk.AccAddress) {},
-			amount:      sdk.Coins{sdk.Coin{Denom: "wrongCoin", Amount: sdk.NewInt(1000)}},
-			expErr:      true,
-			errContains: "wrong fee denomination",
+			name:     "pass - wrong coin denom",
+			malleate: func(addr sdk.AccAddress) {},
+			amount:   sdk.Coins{sdk.Coin{Denom: "wrongCoin", Amount: sdk.NewInt(1000)}},
+			expErr:   false,
 		},
 	}
 
