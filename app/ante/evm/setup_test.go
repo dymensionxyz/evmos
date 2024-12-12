@@ -5,20 +5,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/suite"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/simapp"
 	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/evmos/evmos/v12/app"
 	ante "github.com/evmos/evmos/v12/app/ante"
+	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
 	"github.com/evmos/evmos/v12/encoding"
 	"github.com/evmos/evmos/v12/ethereum/eip712"
+	"github.com/evmos/evmos/v12/testutil"
 	"github.com/evmos/evmos/v12/utils"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
@@ -37,6 +41,7 @@ type AnteTestSuite struct {
 	evmParamsOption          func(*evmtypes.Params)
 	useLegacyEIP712Extension bool
 	useLegacyEIP712TypedData bool
+	address                  common.Address
 }
 
 const TestGasLimit uint64 = 100000
@@ -73,7 +78,18 @@ func (suite *AnteTestSuite) SetupTest() {
 		return genesis
 	})
 
-	suite.ctx = suite.app.BaseApp.NewContext(checkTx, tmproto.Header{Height: 2, ChainID: utils.TestnetChainID + "-1", Time: time.Now().UTC()})
+	// account key
+	priv, err := ethsecp256k1.GenerateKey()
+	suite.Require().NoError(err)
+	suite.address = common.BytesToAddress(priv.PubKey().Address().Bytes())
+
+	// consensus key
+	privCons, err := ethsecp256k1.GenerateKey()
+	suite.Require().NoError(err)
+	consAddress := sdk.ConsAddress(privCons.PubKey().Address())
+	header := testutil.NewHeader(2, time.Now().UTC(), utils.TestnetChainID+"-1", consAddress, nil, nil)
+
+	suite.ctx = suite.app.BaseApp.NewContext(checkTx, header)
 	suite.ctx = suite.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(evmtypes.DefaultEVMDenom, sdk.OneInt())))
 	suite.ctx = suite.ctx.WithBlockGasMeter(sdk.NewGasMeter(1000000000000000000))
 	suite.app.EvmKeeper.WithChainID(suite.ctx)
@@ -85,6 +101,16 @@ func (suite *AnteTestSuite) SetupTest() {
 
 	infCtx := suite.ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
 	suite.app.AccountKeeper.SetParams(infCtx, authtypes.DefaultParams())
+
+	// set validator
+	valAddr := sdk.ValAddress(suite.address.Bytes())
+	validator, err := stakingtypes.NewValidator(valAddr, privCons.PubKey(), stakingtypes.Description{})
+	suite.Require().NoError(err)
+	validator = stakingkeeper.TestingUpdateValidator(suite.app.StakingKeeper, suite.ctx, validator, true)
+	err = suite.app.StakingKeeper.AfterValidatorCreated(suite.ctx, validator.GetOperator())
+	suite.Require().NoError(err)
+	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
+	suite.Require().NoError(err)
 
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
 	// We're using TestMsg amino encoding in some tests, so register it here.

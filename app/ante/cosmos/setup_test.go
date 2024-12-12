@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/suite"
 
 	sdkmath "cosmossdk.io/math"
@@ -14,8 +16,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -42,6 +42,7 @@ type AnteTestSuite struct {
 	anteHandler     sdk.AnteHandler
 	ethSigner       ethtypes.Signer
 	priv            cryptotypes.PrivKey
+	address         common.Address
 	enableFeemarket bool
 	enableLondonHF  bool
 	evmParamsOption func(*evmtypes.Params)
@@ -57,9 +58,12 @@ func (suite *AnteTestSuite) StateDB() *statedb.StateDB {
 
 func (suite *AnteTestSuite) SetupTest() {
 	checkTx := false
+
+	// account key
 	priv, err := ethsecp256k1.GenerateKey()
 	suite.Require().NoError(err)
 	suite.priv = priv
+	suite.address = common.BytesToAddress(priv.PubKey().Address().Bytes())
 
 	suite.app = app.EthSetup(checkTx, func(app *app.Evmos, genesis simapp.GenesisState) simapp.GenesisState {
 		if suite.enableFeemarket {
@@ -90,7 +94,13 @@ func (suite *AnteTestSuite) SetupTest() {
 		return genesis
 	})
 
-	suite.ctx = suite.app.BaseApp.NewContext(checkTx, tmproto.Header{Height: 2, ChainID: chainID, Time: time.Now().UTC()})
+	// consensus key
+	privCons, err := ethsecp256k1.GenerateKey()
+	suite.Require().NoError(err)
+	consAddress := sdk.ConsAddress(privCons.PubKey().Address())
+	header := testutil.NewHeader(2, time.Now().UTC(), chainID, consAddress, nil, nil)
+
+	suite.ctx = suite.app.BaseApp.NewContext(checkTx, header)
 	suite.ctx = suite.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(utils.BaseDenom, sdk.OneInt())))
 	suite.ctx = suite.ctx.WithBlockGasMeter(sdk.NewGasMeter(1000000000000000000))
 	suite.app.EvmKeeper.WithChainID(suite.ctx)
@@ -101,6 +111,16 @@ func (suite *AnteTestSuite) SetupTest() {
 
 	infCtx := suite.ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
 	suite.app.AccountKeeper.SetParams(infCtx, authtypes.DefaultParams())
+
+	// set validator
+	valAddr := sdk.ValAddress(suite.address.Bytes())
+	validator, err := stakingtypes.NewValidator(valAddr, privCons.PubKey(), stakingtypes.Description{})
+	suite.Require().NoError(err)
+	validator = stakingkeeper.TestingUpdateValidator(suite.app.StakingKeeper, suite.ctx, validator, true)
+	err = suite.app.StakingKeeper.AfterValidatorCreated(suite.ctx, validator.GetOperator())
+	suite.Require().NoError(err)
+	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
+	suite.Require().NoError(err)
 
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
 	// We're using TestMsg amino encoding in some tests, so register it here.
@@ -136,7 +156,7 @@ func (suite *AnteTestSuite) SetupTest() {
 	)
 	suite.Require().NoError(err)
 
-	header := suite.ctx.BlockHeader()
+	header = suite.ctx.BlockHeader()
 	suite.ctx = suite.ctx.WithBlockHeight(header.Height - 1)
 	suite.ctx, err = testutil.Commit(suite.ctx, suite.app, time.Second*0, nil)
 	suite.Require().NoError(err)

@@ -36,7 +36,7 @@ func (suite *KeeperTestSuite) TestParams() {
 			},
 			func() interface{} {
 				evmParams := suite.app.EvmKeeper.GetParams(suite.ctx)
-				return evmParams.GetEvmDenom()
+				return evmParams.EvmDenom
 			},
 			true,
 		},

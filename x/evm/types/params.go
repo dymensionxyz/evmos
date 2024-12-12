@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"math/big"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/evmos/evmos/v12/utils"
 )
@@ -46,7 +45,7 @@ var (
 var AvailableExtraEIPs = []int64{1344, 1884, 2200, 2929, 3198, 3529}
 
 // NewParams creates a new Params instance
-func NewParams(evmDenom string, allowUnprotectedTxs, enableCreate, enableCall bool, config ChainConfig, extraEIPs []int64) Params {
+func NewParams(evmDenom string, allowUnprotectedTxs, enableCreate, enableCall bool, config ChainConfig, extraEIPs []int64, gasDenom string) Params {
 	return Params{
 		EvmDenom:            evmDenom,
 		AllowUnprotectedTxs: allowUnprotectedTxs,
@@ -54,6 +53,7 @@ func NewParams(evmDenom string, allowUnprotectedTxs, enableCreate, enableCall bo
 		EnableCall:          enableCall,
 		ExtraEIPs:           extraEIPs,
 		ChainConfig:         config,
+		GasDenom:            gasDenom,
 	}
 }
 
@@ -67,6 +67,7 @@ func DefaultParams() Params {
 		ChainConfig:         DefaultChainConfig(),
 		ExtraEIPs:           nil,
 		AllowUnprotectedTxs: DefaultAllowUnprotectedTxs,
+		GasDenom:            DefaultEVMDenom,
 	}
 }
 
@@ -89,6 +90,10 @@ func (p Params) Validate() error {
 	}
 
 	if err := validateBool(p.AllowUnprotectedTxs); err != nil {
+		return err
+	}
+
+	if err := validateGasDenom(p.GasDenom); err != nil {
 		return err
 	}
 
@@ -143,6 +148,14 @@ func validateChainConfig(i interface{}) error {
 	}
 
 	return cfg.Validate()
+}
+
+func validateGasDenom(i interface{}) error {
+	denom, ok := i.(string)
+	if !ok {
+		return fmt.Errorf("invalid parameter Gas denom type: %T", i)
+	}
+	return sdk.ValidateDenom(denom)
 }
 
 // IsLondon returns if london hardfork is enabled.

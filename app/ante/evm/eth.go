@@ -22,6 +22,7 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
+	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
@@ -106,7 +107,9 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 // EthGasConsumeDecorator validates enough intrinsic gas for the transaction and
 // gas consumption.
 type EthGasConsumeDecorator struct {
-	bankKeeper         anteutils.BankKeeper
+	accountKeeper      authante.AccountKeeper
+	bankKeeper         BankKeeper
+	erc20Keeper        ERC20Keeper
 	distributionKeeper anteutils.DistributionKeeper
 	evmKeeper          EVMKeeper
 	stakingKeeper      anteutils.StakingKeeper
@@ -115,18 +118,22 @@ type EthGasConsumeDecorator struct {
 
 // NewEthGasConsumeDecorator creates a new EthGasConsumeDecorator
 func NewEthGasConsumeDecorator(
-	bankKeeper anteutils.BankKeeper,
+	accountKeeper authante.AccountKeeper,
+	bankKeeper BankKeeper,
+	erc20Keeper ERC20Keeper,
 	distributionKeeper anteutils.DistributionKeeper,
 	evmKeeper EVMKeeper,
 	stakingKeeper anteutils.StakingKeeper,
 	maxGasWanted uint64,
 ) EthGasConsumeDecorator {
 	return EthGasConsumeDecorator{
-		bankKeeper,
-		distributionKeeper,
-		evmKeeper,
-		stakingKeeper,
-		maxGasWanted,
+		accountKeeper:      accountKeeper,
+		bankKeeper:         bankKeeper,
+		erc20Keeper:        erc20Keeper,
+		distributionKeeper: distributionKeeper,
+		evmKeeper:          evmKeeper,
+		stakingKeeper:      stakingKeeper,
+		maxGasWanted:       maxGasWanted,
 	}
 }
 
@@ -163,7 +170,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 	}
 
 	evmParams := egcd.evmKeeper.GetParams(ctx)
-	evmDenom := evmParams.GetEvmDenom()
+	gasDenom := evmParams.GasDenom
 	chainCfg := evmParams.GetChainConfig()
 	ethCfg := chainCfg.EthereumConfig(egcd.evmKeeper.ChainID())
 
@@ -199,7 +206,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 			gasWanted += txData.GetGas()
 		}
 
-		fees, err := keeper.VerifyFee(txData, evmDenom, baseFee, homestead, istanbul, ctx.IsCheckTx())
+		fees, err := keeper.VerifyFee(txData, gasDenom, baseFee, homestead, istanbul, ctx.IsCheckTx())
 		if err != nil {
 			return ctx, errorsmod.Wrapf(err, "failed to verify the fees")
 		}
@@ -210,7 +217,13 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 			return ctx, err
 		}
 
-		err = egcd.evmKeeper.DeductTxCostsFromUserBalance(ctx, fees, common.HexToAddress(msgEthTx.From))
+		// fetch sender account
+		fromAcc, err := authante.GetSignerAcc(ctx, egcd.accountKeeper, common.HexToAddress(msgEthTx.From).Bytes())
+		if err != nil {
+			return ctx, errorsmod.Wrapf(err, "account not found for sender %s", from)
+		}
+
+		err = anteutils.DeductFees(egcd.bankKeeper, egcd.erc20Keeper, ctx, fromAcc, fees)
 		if err != nil {
 			return ctx, errorsmod.Wrapf(err, "failed to deduct transaction costs from user balance")
 		}

@@ -20,10 +20,10 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
+
 	anteutils "github.com/evmos/evmos/v12/app/ante/utils"
 	evmostypes "github.com/evmos/evmos/v12/types"
 	"github.com/evmos/evmos/v12/x/evm/types"
@@ -45,7 +45,7 @@ func NewDynamicFeeChecker(k DynamicFeeEVMKeeper) anteutils.TxFeeChecker {
 		}
 
 		params := k.GetParams(ctx)
-		denom := params.EvmDenom
+		gasDenom := params.GasDenom
 		ethCfg := params.ChainConfig.EthereumConfig(k.ChainID())
 
 		baseFee := k.GetBaseFee(ctx, ethCfg)
@@ -74,13 +74,13 @@ func NewDynamicFeeChecker(k DynamicFeeEVMKeeper) anteutils.TxFeeChecker {
 
 		gas := feeTx.GetGas()
 		feeCoins := feeTx.GetFee()
-		fee := feeCoins.AmountOfNoDenomValidation(denom)
+		fee := feeCoins.AmountOfNoDenomValidation(gasDenom)
 
 		feeCap := fee.Quo(sdkmath.NewIntFromUint64(gas))
 		baseFeeInt := sdkmath.NewIntFromBigInt(baseFee)
 
 		if feeCap.LT(baseFeeInt) {
-			return nil, 0, errorsmod.Wrapf(errortypes.ErrInsufficientFee, "gas prices too low, got: %s%s required: %s%s. Please retry using a higher gas price or a higher fee", feeCap, denom, baseFeeInt, denom)
+			return nil, 0, errorsmod.Wrapf(errortypes.ErrInsufficientFee, "gas prices too low, got: %s%s required: %s%s. Please retry using a higher gas price or a higher fee", feeCap, gasDenom, baseFeeInt, gasDenom)
 		}
 
 		// calculate the effective gas price using the EIP-1559 logic.
@@ -89,7 +89,7 @@ func NewDynamicFeeChecker(k DynamicFeeEVMKeeper) anteutils.TxFeeChecker {
 		// NOTE: create a new coins slice without having to validate the denom
 		effectiveFee := sdk.Coins{
 			{
-				Denom:  denom,
+				Denom:  gasDenom,
 				Amount: effectivePrice.Mul(sdkmath.NewIntFromUint64(gas)),
 			},
 		}

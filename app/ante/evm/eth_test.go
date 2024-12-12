@@ -5,17 +5,22 @@ import (
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	ethante "github.com/evmos/evmos/v12/app/ante/evm"
+	"github.com/evmos/evmos/v12/contracts"
 	"github.com/evmos/evmos/v12/server/config"
 	"github.com/evmos/evmos/v12/testutil"
 	testutiltx "github.com/evmos/evmos/v12/testutil/tx"
 	"github.com/evmos/evmos/v12/types"
 	"github.com/evmos/evmos/v12/utils"
+	erc20types "github.com/evmos/evmos/v12/x/erc20/types"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	inflationtypes "github.com/evmos/evmos/v12/x/inflation/types"
 )
 
 func (suite *AnteTestSuite) TestNewEthAccountVerificationDecorator() {
@@ -178,9 +183,11 @@ func (suite *AnteTestSuite) TestEthNonceVerificationDecorator() {
 	}
 }
 
+const ibcBase = "ibc/7B2A4F6E798182988D77B6B884919AF617A73503FDAC27C916CD7A69A69013CF"
+
 func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 	chainID := suite.app.EvmKeeper.ChainID()
-	dec := ethante.NewEthGasConsumeDecorator(suite.app.BankKeeper, suite.app.DistrKeeper, suite.app.EvmKeeper, suite.app.StakingKeeper, config.DefaultMaxTxGasWanted)
+	dec := ethante.NewEthGasConsumeDecorator(suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.Erc20Keeper, suite.app.DistrKeeper, suite.app.EvmKeeper, suite.app.StakingKeeper, config.DefaultMaxTxGasWanted)
 
 	addr := testutiltx.GenerateAddress()
 
@@ -424,6 +431,153 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 					rewards,
 					"the total rewards should be the same as after the setup, since the fees are paid using the account balance",
 				)
+			},
+		},
+		{
+			"success - legacy tx - IBC gas denom",
+			tx2,
+			tx2GasLimit, // it's capped
+			func(ctx sdk.Context) sdk.Context {
+				// update evm params to use IBC denom as gas denom
+				params := suite.app.EvmKeeper.GetParams(ctx)
+				params.GasDenom = ibcBase
+				err := suite.app.EvmKeeper.SetParams(ctx, params)
+				suite.Require().NoError(err)
+
+				// register IBC denom
+				metadataIbc := banktypes.Metadata{
+					Description: "ATOM IBC voucher (channel 14)",
+					Base:        ibcBase,
+					// NOTE: Denom units MUST be increasing
+					DenomUnits: []*banktypes.DenomUnit{
+						{
+							Denom:    ibcBase,
+							Exponent: 0,
+						},
+					},
+					Name:    "ATOM channel-14",
+					Symbol:  "ibcATOM-14",
+					Display: ibcBase,
+				}
+
+				// initial IBC denom
+				err = suite.app.BankKeeper.MintCoins(ctx, inflationtypes.ModuleName, sdk.Coins{sdk.NewInt64Coin(metadataIbc.Base, 1)})
+				suite.Require().NoError(err)
+
+				// register ERC20 representation of IBC denom
+				_, err = suite.app.Erc20Keeper.RegisterCoin(ctx, metadataIbc)
+				suite.Require().NoError(err)
+
+				// fund sender's SDK account: mint IBC coins and convert it to ERC20 tokens
+				coin := sdk.NewCoin(ibcBase, sdk.NewInt(1e16))
+				coins := sdk.NewCoins(coin)
+				sender := sdk.AccAddress(addr.Bytes())
+				err = testutil.FundAccount(ctx, suite.app.BankKeeper, sender, coins)
+				suite.Require().NoError(err)
+
+				// check that SDK balance is funded with IBC coins
+				senderBalances := suite.app.BankKeeper.GetBalance(ctx, sender, ibcBase)
+				suite.Require().True(senderBalances.IsPositive())
+
+				// ensure that the fee collector balance is empty initially
+				feeCollectorInitialBalance := suite.app.BankKeeper.GetBalance(ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
+				suite.Require().True(feeCollectorInitialBalance.IsZero())
+
+				return ctx.
+					WithBlockGasMeter(sdk.NewGasMeter(1e19)).
+					WithBlockHeight(ctx.BlockHeight() + 1)
+			},
+			true, false,
+			tx2Priority,
+			func(ctx sdk.Context) {
+				// check the fee collector balance, it should be positive (initially it was empty)
+				balance := suite.app.BankKeeper.GetBalance(ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
+				suite.Require().True(balance.IsPositive())
+			},
+		},
+		{
+			"success - legacy tx - IBC gas denom, not enough SDK coins, enough ERC20 tokens",
+			tx2,
+			tx2GasLimit, // it's capped
+			func(ctx sdk.Context) sdk.Context {
+				// update evm params to use IBC denom as gas denom
+				params := suite.app.EvmKeeper.GetParams(ctx)
+				params.GasDenom = ibcBase
+				err := suite.app.EvmKeeper.SetParams(ctx, params)
+				suite.Require().NoError(err)
+
+				// register IBC denom
+				metadataIbc := banktypes.Metadata{
+					Description: "ATOM IBC voucher (channel 14)",
+					Base:        ibcBase,
+					// NOTE: Denom units MUST be increasing
+					DenomUnits: []*banktypes.DenomUnit{
+						{
+							Denom:    ibcBase,
+							Exponent: 0,
+						},
+					},
+					Name:    "ATOM channel-14",
+					Symbol:  "ibcATOM-14",
+					Display: ibcBase,
+				}
+
+				// initial IBC denom
+				err = suite.app.BankKeeper.MintCoins(ctx, inflationtypes.ModuleName, sdk.Coins{sdk.NewInt64Coin(metadataIbc.Base, 1)})
+				suite.Require().NoError(err)
+
+				// register ERC20 representation of IBC denom
+				tp, err := suite.app.Erc20Keeper.RegisterCoin(ctx, metadataIbc)
+				suite.Require().NoError(err)
+
+				// fund sender's eth account: mint IBC coins and convert it to ERC20 tokens
+				coin := sdk.NewCoin(ibcBase, sdk.NewInt(1e16))
+				coins := sdk.NewCoins(coin)
+				sender := sdk.AccAddress(addr.Bytes())
+				err = testutil.FundAccount(ctx, suite.app.BankKeeper, sender, coins)
+				suite.Require().NoError(err)
+				msg := erc20types.NewMsgConvertCoin(
+					coin,
+					common.BytesToAddress(sender.Bytes()),
+					sender,
+				)
+				_, err = suite.app.Erc20Keeper.ConvertCoin(sdk.WrapSDKContext(ctx), msg)
+				suite.Require().NoError(err)
+
+				// now the sender's eth balance is funded with ERC20 tokens
+				senderBalance := suite.app.Erc20Keeper.BalanceOf(ctx, contracts.ERC20MinterBurnerDecimalsContract.ABI, tp.GetERC20Contract(), common.BytesToAddress(addr.Bytes()))
+				suite.Require().NotNil(senderBalance)
+				suite.Require().Equal(senderBalance.Cmp(big.NewInt(1e16)), 0) // == 1e16
+
+				// while SDK balance is empty
+				senderBalances := suite.app.BankKeeper.GetAllBalances(ctx, sender)
+				suite.Require().True(senderBalances.IsZero())
+
+				// ensure that the fee collector balance is empty initially
+				feeCollectorInitialBalance := suite.app.BankKeeper.GetBalance(ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
+				suite.Require().True(feeCollectorInitialBalance.IsZero())
+
+				return ctx.
+					WithBlockGasMeter(sdk.NewGasMeter(1e19)).
+					WithBlockHeight(ctx.BlockHeight() + 1)
+			},
+			true, false,
+			tx2Priority,
+			func(ctx sdk.Context) {
+				// get the token pair for the IBC denom
+				tpID := suite.app.Erc20Keeper.GetTokenPairID(ctx, ibcBase)
+				suite.Require().NotNil(tpID)
+				tp, found := suite.app.Erc20Keeper.GetTokenPair(ctx, tpID)
+				suite.Require().True(found)
+
+				// check the sender's ERC20 balance, it should be less than the initial balance
+				senderBalance := suite.app.Erc20Keeper.BalanceOf(ctx, contracts.ERC20MinterBurnerDecimalsContract.ABI, tp.GetERC20Contract(), common.BytesToAddress(addr.Bytes()))
+				suite.Require().NotNil(senderBalance)
+				suite.Require().Equal(senderBalance.Cmp(big.NewInt(1e16)), -1) // < 1e16
+
+				// check the fee collector balance, it should be positive (initially it was empty)
+				balance := suite.app.BankKeeper.GetBalance(ctx, authtypes.NewModuleAddress(authtypes.FeeCollectorName), ibcBase)
+				suite.Require().True(balance.IsPositive())
 			},
 		},
 	}

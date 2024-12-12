@@ -21,6 +21,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
+
 	evmante "github.com/evmos/evmos/v12/app/ante/evm"
 )
 
@@ -52,11 +53,10 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 	if minGasPrice.IsZero() || simulate {
 		return next(ctx, tx, simulate)
 	}
-	evmParams := mpd.evmKeeper.GetParams(ctx)
-	evmDenom := evmParams.GetEvmDenom()
+	gasDenom := mpd.evmKeeper.GetParams(ctx).GasDenom
 	minGasPrices := sdk.DecCoins{
 		{
-			Denom:  evmDenom,
+			Denom:  gasDenom,
 			Amount: minGasPrice,
 		},
 	}

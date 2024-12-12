@@ -17,6 +17,7 @@
 package utils
 
 import (
+	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
@@ -25,6 +26,12 @@ import (
 // in the context of the AnteHandler utils package.
 type BankKeeper interface {
 	GetBalance(ctx sdk.Context, addr sdk.AccAddress, denom string) sdk.Coin
+	GetAllBalances(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
+	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+}
+
+type ERC20Keeper interface {
+	TryConvertErc20Sdk(ctx sdk.Context, sender, receiver sdk.AccAddress, denom string, amount math.Int) error
 }
 
 // DistributionKeeper defines the exposed interface for using functionality of the distribution
