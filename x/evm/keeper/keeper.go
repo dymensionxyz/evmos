@@ -318,7 +318,7 @@ func (k *Keeper) GetNonce(ctx sdk.Context, addr common.Address) uint64 {
 func (k *Keeper) GetBalance(ctx sdk.Context, addr common.Address) *big.Int {
 	cosmosAddr := sdk.AccAddress(addr.Bytes())
 	evmParams := k.GetParams(ctx)
-	evmDenom := evmParams.GetEvmDenom()
+	evmDenom := evmParams.EvmDenom
 	// if node is pruned, params is empty. Return invalid value
 	if evmDenom == "" {
 		return big.NewInt(-1)

@@ -17,14 +17,18 @@
 package utils
 
 import (
+	"fmt"
+
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 // ClaimStakingRewardsIfNecessary checks if the given address has enough balance to cover the
 // given amount. If not, it attempts to claim enough staking rewards to cover the amount.
+// CONTRACT: the method assumes that the amount contains a single coin: staking or non-staking.
 func ClaimStakingRewardsIfNecessary(
 	ctx sdk.Context,
 	bankKeeper BankKeeper,
@@ -36,9 +40,8 @@ func ClaimStakingRewardsIfNecessary(
 	stakingDenom := stakingKeeper.BondDenom(ctx)
 	found, amountInStakingDenom := amount.Find(stakingDenom)
 	if !found {
-		return errortypes.ErrInsufficientFee.Wrapf(
-			"wrong fee denomination; got: %s; required: %s", amount, stakingDenom,
-		)
+		// amount is not in staking denom, do not try to claim staking rewards
+		return nil
 	}
 
 	balance := bankKeeper.GetBalance(ctx, addr, stakingDenom)
@@ -105,5 +108,49 @@ func ClaimSufficientStakingRewards(
 		return errortypes.ErrInsufficientFee.Wrapf("insufficient staking rewards to cover transaction fees")
 	}
 	writeFn() // commit state changes
+	return nil
+}
+
+// DeductFees deducts fees from the given account. If the account does not have enough
+// SDK coins to cover the fees, it tries to cover them with respective ERC20 tokens.
+func DeductFees(bankKeeper BankKeeper, erc20Keeper ERC20Keeper, ctx sdk.Context, acc types.AccountI, fees sdk.Coins) error {
+	if !fees.IsValid() {
+		return errorsmod.Wrapf(errortypes.ErrInsufficientFee, "invalid fee amount: %s", fees)
+	}
+
+	// first, try to pay the fee with SDK coins
+
+	accBalances := bankKeeper.GetAllBalances(ctx, acc.GetAddress())
+	if fees.IsAllLTE(accBalances) {
+		// the fee can be paid with SDK coins
+		err := bankKeeper.SendCoinsFromAccountToModule(ctx, acc.GetAddress(), types.FeeCollectorName, fees)
+		if err != nil {
+			return fmt.Errorf("send coins from account to module: %w", err)
+		}
+		return nil
+	}
+
+	// try to pay the fee with ERC20 tokens
+
+	// use a cached context to avoid writing to state if there are not enough ERC20 balance to cover the fees
+	// or some other error occurs
+	cacheCtx, writeFn := ctx.CacheContext()
+
+	// convert ERC20 token from sender's ETH address to SDK coin on sender's SDK address
+	for _, fee := range fees {
+		err := erc20Keeper.TryConvertErc20Sdk(cacheCtx, acc.GetAddress(), acc.GetAddress(), fee.Denom, fee.Amount)
+		if err != nil {
+			return fmt.Errorf("convert ERC20 token to SDK coin: denom %s: %w", fee.Denom, err)
+		}
+	}
+
+	// now sender should have enough balance to cover the fees
+	err := bankKeeper.SendCoinsFromAccountToModule(cacheCtx, acc.GetAddress(), types.FeeCollectorName, fees)
+	if err != nil {
+		return fmt.Errorf("send coins from account to module: %w", err)
+	}
+
+	writeFn()
+
 	return nil
 }

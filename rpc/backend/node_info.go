@@ -33,12 +33,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	tmtypes "github.com/tendermint/tendermint/types"
+
 	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
 	rpctypes "github.com/evmos/evmos/v12/rpc/types"
 	"github.com/evmos/evmos/v12/server/config"
 	"github.com/evmos/evmos/v12/types"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // Accounts returns the list of accounts available to this node.
@@ -345,7 +346,7 @@ func (b *Backend) RPCMinGasPrice() int64 {
 	}
 
 	minGasPrice := b.cfg.GetMinGasPrices()
-	amt := minGasPrice.AmountOf(evmParams.Params.EvmDenom).TruncateInt64()
+	amt := minGasPrice.AmountOf(evmParams.Params.GasDenom).TruncateInt64()
 	if amt == 0 {
 		return types.DefaultGasPrice
 	}

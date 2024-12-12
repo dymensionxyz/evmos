@@ -79,8 +79,8 @@ func (k Keeper) PostTxProcessing(
 
 	txFee := sdk.NewIntFromUint64(receipt.GasUsed).Mul(sdk.NewIntFromBigInt(msg.GasPrice()))
 	developerFee := (params.DeveloperShares).MulInt(txFee).TruncateInt()
-	evmDenom := k.evmKeeper.GetParams(ctx).EvmDenom
-	fees := sdk.Coins{{Denom: evmDenom, Amount: developerFee}}
+	gasDenom := k.evmKeeper.GetParams(ctx).GasDenom
+	fees := sdk.Coins{{Denom: gasDenom, Amount: developerFee}}
 
 	// distribute the fees to the contract deployer / withdraw address
 	err := k.bankKeeper.SendCoinsFromModuleToAccount(

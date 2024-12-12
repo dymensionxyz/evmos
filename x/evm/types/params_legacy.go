@@ -25,6 +25,7 @@ var (
 	ParamStoreKeyExtraEIPs           = []byte("EnableExtraEIPs")
 	ParamStoreKeyChainConfig         = []byte("ChainConfig")
 	ParamStoreKeyAllowUnprotectedTxs = []byte("AllowUnprotectedTxs")
+	ParamStoreKeyGasDenom            = []byte("GasDenom")
 )
 
 // Deprecated: ParamKeyTable returns the parameter key table.
@@ -47,5 +48,6 @@ func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 		paramtypes.NewParamSetPair(ParamStoreKeyExtraEIPs, &p.ExtraEIPs, validateEIPs),
 		paramtypes.NewParamSetPair(ParamStoreKeyChainConfig, &p.ChainConfig, validateChainConfig),
 		paramtypes.NewParamSetPair(ParamStoreKeyAllowUnprotectedTxs, &p.AllowUnprotectedTxs, validateBool),
+		paramtypes.NewParamSetPair(ParamStoreKeyGasDenom, &p.GasDenom, validateGasDenom),
 	}
 }
