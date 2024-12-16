@@ -75,7 +75,7 @@ func NewRawTxCmd() *cobra.Command {
 				return err
 			}
 
-			tx, err := msg.BuildTx(clientCtx.TxConfig.NewTxBuilder(), rsp.Params.EvmDenom)
+			tx, err := msg.BuildTx(clientCtx.TxConfig.NewTxBuilder(), rsp.Params.GasDenom)
 			if err != nil {
 				return err
 			}
