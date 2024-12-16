@@ -29,12 +29,13 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	rpctypes "github.com/evmos/evmos/v12/rpc/types"
-	"github.com/evmos/evmos/v12/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	rpctypes "github.com/evmos/evmos/v12/rpc/types"
+	"github.com/evmos/evmos/v12/types"
+	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
 // Resend accepts an existing transaction and a new gas price and limit. It will remove
@@ -148,7 +149,7 @@ func (b *Backend) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 		return common.Hash{}, err
 	}
 
-	cosmosTx, err := ethereumTx.BuildTx(b.clientCtx.TxConfig.NewTxBuilder(), res.Params.EvmDenom)
+	cosmosTx, err := ethereumTx.BuildTx(b.clientCtx.TxConfig.NewTxBuilder(), res.Params.GasDenom)
 	if err != nil {
 		b.logger.Error("failed to build cosmos tx", "error", err.Error())
 		return common.Hash{}, err

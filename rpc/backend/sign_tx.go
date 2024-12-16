@@ -82,7 +82,7 @@ func (b *Backend) SendTransaction(args evmtypes.TransactionArgs) (common.Hash, e
 	}
 
 	// Assemble transaction from fields
-	tx, err := msg.BuildTx(b.clientCtx.TxConfig.NewTxBuilder(), res.Params.EvmDenom)
+	tx, err := msg.BuildTx(b.clientCtx.TxConfig.NewTxBuilder(), res.Params.GasDenom)
 	if err != nil {
 		b.logger.Error("build cosmos tx failed", "error", err.Error())
 		return common.Hash{}, err
