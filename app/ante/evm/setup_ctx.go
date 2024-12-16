@@ -25,6 +25,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
+	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
@@ -172,6 +173,11 @@ func (vbd EthValidateBasicDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simu
 		// Validate `From` field
 		if msgEthTx.From != "" {
 			return ctx, errorsmod.Wrapf(errortypes.ErrInvalidRequest, "invalid From %s, expect empty string", msgEthTx.From)
+		}
+
+		// Validate `OnBehalf` field
+		if msgEthTx.OnBehalf != "" && !common.IsHexAddress(msgEthTx.OnBehalf) {
+			return ctx, errorsmod.Wrapf(errortypes.ErrInvalidRequest, "invalid OnBehalf, expect hex address, got %s", msgEthTx.OnBehalf)
 		}
 
 		txGasLimit += msgEthTx.GetGas()

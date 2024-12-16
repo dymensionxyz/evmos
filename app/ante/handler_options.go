@@ -109,6 +109,10 @@ func newEVMAnteHandler(options HandlerOptions) sdk.AnteHandler {
 		evmante.NewEthMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		evmante.NewEthValidateBasicDecorator(options.EvmKeeper),
 		evmante.NewEthSigVerificationDecorator(options.EvmKeeper),
+		// TODO: here we need to put an auth decorator
+		//  increase the account sequence number
+		//  replace from with OnBehalf
+		//  verify authz
 		evmante.NewEthAccountVerificationDecorator(options.AccountKeeper, options.EvmKeeper),
 		evmante.NewCanTransferDecorator(options.EvmKeeper),
 		evmante.NewEthVestingTransactionDecorator(options.AccountKeeper, options.BankKeeper, options.EvmKeeper),

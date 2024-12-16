@@ -17,10 +17,12 @@ package evm
 
 import (
 	"math/big"
+	"time"
 
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
+	"github.com/cosmos/cosmos-sdk/x/authz"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -71,4 +73,8 @@ type BankKeeper interface {
 
 type ERC20Keeper interface {
 	TryConvertErc20Sdk(ctx sdk.Context, sender, receiver sdk.AccAddress, denom string, amount math.Int) error
+}
+
+type AuthzKeeper interface {
+	GetAuthorization(ctx sdk.Context, grantee, granter sdk.AccAddress, msgType string) (authz.Authorization, *time.Time)
 }

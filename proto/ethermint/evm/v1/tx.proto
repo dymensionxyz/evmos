@@ -36,6 +36,10 @@ message MsgEthereumTx {
   // against the address derived from the signature (V, R, S) using the
   // secp256k1 elliptic curve
   string from = 4;
+  // on_behalf is the ethereum address in hex format of the account that
+  // gives the permission to send the transaction on their behalf. Analogue
+  // to the granter in AuthZ terminology.
+  string on_behalf = 5;
 }
 
 // LegacyTx is the transaction data of regular Ethereum transactions.
