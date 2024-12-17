@@ -41,7 +41,7 @@ func (m *MockEVMKeeper) EstimateGas(_ context.Context, _ *evm.EthCallRequest) (*
 	return args.Get(0).(*evm.EstimateGasResponse), args.Error(1)
 }
 
-func (m *MockEVMKeeper) ApplyMessage(_ sdk.Context, _ core.Message, _ vm.EVMLogger, _ bool, _ common.Address) (*evm.MsgEthereumTxResponse, error) {
+func (m *MockEVMKeeper) ApplyMessage(_ sdk.Context, _ core.Message, _ vm.EVMLogger, _ bool) (*evm.MsgEthereumTxResponse, error) {
 	args := m.Called(mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	if args.Get(0) == nil {

@@ -34,7 +34,6 @@ import (
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // EthAccountVerificationDecorator validates an account balance checks
@@ -296,7 +295,6 @@ func NewCanTransferDecorator(evmKeeper EVMKeeper) CanTransferDecorator {
 func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	params := ctd.evmKeeper.GetParams(ctx)
 	ethCfg := params.ChainConfig.EthereumConfig(ctd.evmKeeper.ChainID())
-	signer := ethtypes.MakeSigner(ethCfg, big.NewInt(ctx.BlockHeight()))
 
 	for _, msg := range tx.GetMsgs() {
 		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
@@ -305,14 +303,7 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		}
 
 		baseFee := ctd.evmKeeper.GetBaseFee(ctx, ethCfg)
-
-		coreMsg, err := msgEthTx.AsMessage(signer, baseFee)
-		if err != nil {
-			return ctx, errorsmod.Wrapf(
-				err,
-				"failed to create an ethereum core.Message from signer %T", signer,
-			)
-		}
+		coreMsg := msgEthTx.AsMessage(baseFee)
 
 		if evmtypes.IsLondon(ethCfg, ctx.BlockHeight()) {
 			if baseFee == nil {

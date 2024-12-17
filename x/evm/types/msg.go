@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
+	"github.com/ethereum/go-ethereum/common/math"
 
 	errorsmod "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -329,9 +330,11 @@ func (msg MsgEthereumTx) AsTransaction() *ethtypes.Transaction {
 	return ethtypes.NewTx(txData.AsEthereumData())
 }
 
-// AsMessage creates an Ethereum core.Message from the msg fields
-func (msg MsgEthereumTx) AsMessage(signer ethtypes.Signer, baseFee *big.Int) (core.Message, error) {
-	return msg.AsTransaction().AsMessage(signer, baseFee)
+// AsMessage creates an Ethereum core.Message from the msg fields. MsgEthereumTx must
+// have a filled From field (optionally, OnBehalf). From is filled automatically
+// in the EthSigVerificationDecorator ante handler.
+func (msg MsgEthereumTx) AsMessage(baseFee *big.Int) core.Message {
+	return TxAsMessage(msg.AsTransaction(), baseFee, common.BytesToAddress(msg.GetFrom()))
 }
 
 // GetSender extracts the sender address from the signature values using the latest signer for the given chainID.
@@ -395,6 +398,32 @@ func (msg *MsgEthereumTx) BuildTx(b client.TxBuilder, evmDenom string) (signing.
 	builder.SetGasLimit(msg.GetGas())
 	tx := builder.GetTx()
 	return tx, nil
+}
+
+// TxAsMessage ia a modified version of ethtypes.AsMessage that modifies from address.
+func TxAsMessage(tx *ethtypes.Transaction, baseFee *big.Int, from common.Address) ethtypes.Message {
+	gasPrice := new(big.Int).Set(tx.GasPrice())
+	gasFeeCap := new(big.Int).Set(tx.GasFeeCap())
+	gasTipCap := new(big.Int).Set(tx.GasTipCap())
+
+	// If baseFee provided, set gasPrice to effectiveGasPrice.
+	if baseFee != nil {
+		gasPrice = math.BigMin(gasPrice.Add(gasTipCap, baseFee), gasFeeCap)
+	}
+
+	return ethtypes.NewMessage(
+		from,
+		tx.To(),
+		tx.Nonce(),
+		tx.Value(),
+		tx.Gas(),
+		gasPrice,
+		gasFeeCap,
+		gasTipCap,
+		tx.Data(),
+		tx.AccessList(),
+		false,
+	)
 }
 
 // GetSigners returns the expected signers for a MsgUpdateParams message.

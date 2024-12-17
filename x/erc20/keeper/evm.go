@@ -224,7 +224,7 @@ func (k Keeper) CallEVMWithData(
 		!commit,               // isFake
 	)
 
-	res, err := k.evmKeeper.ApplyMessage(ctx, msg, evmtypes.NewNoOpTracer(), commit, from)
+	res, err := k.evmKeeper.ApplyMessage(ctx, msg, evmtypes.NewNoOpTracer(), commit)
 	if err != nil {
 		return nil, err
 	}
