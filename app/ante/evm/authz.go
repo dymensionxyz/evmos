@@ -46,7 +46,7 @@ func (d AuthorizationDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		granter := sdk.AccAddress(common.FromHex(msgEthTx.OnBehalf))
 		grantee := sdk.AccAddress(common.FromHex(msgEthTx.From))
 
-		authorization, _ := d.authzKeeper.GetAuthorization(ctx, granter, grantee, ethMsgTypeURL)
+		authorization, _ := d.authzKeeper.GetAuthorization(ctx, grantee, granter, ethMsgTypeURL)
 		if authorization == nil {
 			// Nil is returned under the following circumstances:
 			//   - No grant is found.

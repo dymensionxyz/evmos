@@ -133,6 +133,7 @@ func (suite *AnteTestSuite) SetupTest() {
 		FeeMarketKeeper:    suite.app.FeeMarketKeeper,
 		SignModeHandler:    encodingConfig.TxConfig.SignModeHandler(),
 		SigGasConsumer:     ante.SigVerificationGasConsumer,
+		AuthzKeeper:        suite.app.AuthzKeeper,
 	})
 
 	suite.anteHandler = anteHandler

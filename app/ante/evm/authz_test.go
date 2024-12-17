@@ -64,8 +64,8 @@ func (s *AnteTestSuite) TestAuthorizationDecorator() {
 
 			// Grant authorization if required
 			if tc.grantAuth {
-				grantee := sdk.AccAddress(tc.onBehalf.Bytes())
-				granter := sdk.AccAddress(s.address.Bytes())
+				granter := sdk.AccAddress(tc.onBehalf.Bytes())
+				grantee := sdk.AccAddress(s.address.Bytes())
 				a := authz.NewGenericAuthorization(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))
 				err = s.app.AuthzKeeper.SaveGrant(s.ctx, grantee, granter, a, nil)
 				s.Require().NoError(err)

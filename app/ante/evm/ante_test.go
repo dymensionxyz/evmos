@@ -23,18 +23,29 @@ import (
 
 func (suite *AnteTestSuite) TestAnteHandler() {
 	var acc authtypes.AccountI
+	var onBehalfAcc authtypes.AccountI
 	addr, privKey := utiltx.NewAddrKey()
 	to := utiltx.GenerateAddress()
+	onBehalf := utiltx.GenerateAddress()
 
 	setup := func() {
 		suite.enableFeemarket = false
 		suite.SetupTest() // reset
+
+		// Prepare sender account
 
 		acc = suite.app.AccountKeeper.NewAccountWithAddress(suite.ctx, addr.Bytes())
 		suite.Require().NoError(acc.SetSequence(1))
 		suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
 		err := suite.app.EvmKeeper.SetBalance(suite.ctx, addr, big.NewInt(10000000000))
+		suite.Require().NoError(err)
+
+		onBehalfAcc = suite.app.AccountKeeper.NewAccountWithAddress(suite.ctx, onBehalf.Bytes())
+		suite.Require().NoError(onBehalfAcc.SetSequence(1))
+		suite.app.AccountKeeper.SetAccount(suite.ctx, onBehalfAcc)
+
+		err = suite.app.EvmKeeper.SetBalance(suite.ctx, onBehalf, big.NewInt(10000000000))
 		suite.Require().NoError(err)
 
 		suite.app.FeeMarketKeeper.SetBaseFee(suite.ctx, big.NewInt(100))
@@ -105,6 +116,96 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 			false, true, true,
 		},
 		{
+			"success - DeliverTx (contract), OnBehalf - authorized",
+			func() sdk.Tx {
+				signedContractTx := evmtypes.NewTx(ethContractCreationTxParams)
+				signedContractTx.From = addr.Hex()
+				signedContractTx.OnBehalf = onBehalf.Hex()
+
+				grantee := sdk.AccAddress(addr.Bytes())
+				granter := sdk.AccAddress(onBehalf.Bytes())
+				a := authz.NewGenericAuthorization(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))
+				err := suite.app.AuthzKeeper.SaveGrant(suite.ctx, grantee, granter, a, nil)
+				suite.Require().NoError(err)
+
+				tx := suite.CreateTestTx(signedContractTx, privKey, 1, false)
+				return tx
+			},
+			false, false, true,
+		},
+		{
+			"success - CheckTx (contract), OnBehalf - authorized",
+			func() sdk.Tx {
+				signedContractTx := evmtypes.NewTx(ethContractCreationTxParams)
+				signedContractTx.From = addr.Hex()
+				signedContractTx.OnBehalf = onBehalf.Hex()
+
+				grantee := sdk.AccAddress(addr.Bytes())
+				granter := sdk.AccAddress(onBehalf.Bytes())
+				a := authz.NewGenericAuthorization(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))
+				err := suite.app.AuthzKeeper.SaveGrant(suite.ctx, grantee, granter, a, nil)
+				suite.Require().NoError(err)
+
+				tx := suite.CreateTestTx(signedContractTx, privKey, 1, false)
+				return tx
+			},
+			true, false, true,
+		},
+		{
+			"success - ReCheckTx (contract), OnBehalf - authorized",
+			func() sdk.Tx {
+				signedContractTx := evmtypes.NewTx(ethContractCreationTxParams)
+				signedContractTx.From = addr.Hex()
+				signedContractTx.OnBehalf = onBehalf.Hex()
+
+				grantee := sdk.AccAddress(addr.Bytes())
+				granter := sdk.AccAddress(onBehalf.Bytes())
+				a := authz.NewGenericAuthorization(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))
+				err := suite.app.AuthzKeeper.SaveGrant(suite.ctx, grantee, granter, a, nil)
+				suite.Require().NoError(err)
+
+				tx := suite.CreateTestTx(signedContractTx, privKey, 1, false)
+				return tx
+			},
+			false, true, true,
+		},
+		{
+			"fail - DeliverTx (contract), OnBehalf - unauthorized",
+			func() sdk.Tx {
+				signedContractTx := evmtypes.NewTx(ethContractCreationTxParams)
+				signedContractTx.From = addr.Hex()
+				signedContractTx.OnBehalf = onBehalf.Hex()
+
+				tx := suite.CreateTestTx(signedContractTx, privKey, 1, false)
+				return tx
+			},
+			false, false, false,
+		},
+		{
+			"fail - CheckTx (contract), OnBehalf - unauthorized",
+			func() sdk.Tx {
+				signedContractTx := evmtypes.NewTx(ethContractCreationTxParams)
+				signedContractTx.From = addr.Hex()
+				signedContractTx.OnBehalf = onBehalf.Hex()
+
+				tx := suite.CreateTestTx(signedContractTx, privKey, 1, false)
+				return tx
+			},
+			true, false, false,
+		},
+		{
+			"fail - ReCheckTx (contract), OnBehalf - unauthorized",
+			func() sdk.Tx {
+				signedContractTx := evmtypes.NewTx(ethContractCreationTxParams)
+				signedContractTx.From = addr.Hex()
+				signedContractTx.OnBehalf = onBehalf.Hex()
+
+				tx := suite.CreateTestTx(signedContractTx, privKey, 1, false)
+				return tx
+			},
+			false, true, false,
+		},
+		{
 			"success - DeliverTx",
 			func() sdk.Tx {
 				signedTx := evmtypes.NewTx(ethTxParams)
@@ -114,6 +215,36 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 				return tx
 			},
 			false, false, true,
+		},
+		{
+			"success - DeliverTx, OnBehalf - authorized",
+			func() sdk.Tx {
+				signedTx := evmtypes.NewTx(ethTxParams)
+				signedTx.From = addr.Hex()
+				signedTx.OnBehalf = onBehalf.Hex()
+
+				grantee := sdk.AccAddress(addr.Bytes())
+				granter := sdk.AccAddress(onBehalf.Bytes())
+				a := authz.NewGenericAuthorization(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))
+				err := suite.app.AuthzKeeper.SaveGrant(suite.ctx, grantee, granter, a, nil)
+				suite.Require().NoError(err)
+
+				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
+				return tx
+			},
+			false, false, true,
+		},
+		{
+			"fail - DeliverTx, OnBehalf - unauthorized",
+			func() sdk.Tx {
+				signedTx := evmtypes.NewTx(ethTxParams)
+				signedTx.From = addr.Hex()
+				signedTx.OnBehalf = onBehalf.Hex()
+
+				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
+				return tx
+			},
+			false, false, false,
 		},
 		{
 			"success - CheckTx",
@@ -127,6 +258,36 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 			true, false, true,
 		},
 		{
+			"success - CheckTx, onBehalf - authorized",
+			func() sdk.Tx {
+				signedTx := evmtypes.NewTx(ethTxParams)
+				signedTx.From = addr.Hex()
+				signedTx.OnBehalf = onBehalf.Hex()
+
+				grantee := sdk.AccAddress(addr.Bytes())
+				granter := sdk.AccAddress(onBehalf.Bytes())
+				a := authz.NewGenericAuthorization(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))
+				err := suite.app.AuthzKeeper.SaveGrant(suite.ctx, grantee, granter, a, nil)
+				suite.Require().NoError(err)
+
+				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
+				return tx
+			},
+			true, false, true,
+		},
+		{
+			"fail - CheckTx, onBehalf - unauthorized",
+			func() sdk.Tx {
+				signedTx := evmtypes.NewTx(ethTxParams)
+				signedTx.From = addr.Hex()
+				signedTx.OnBehalf = onBehalf.Hex()
+
+				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
+				return tx
+			},
+			true, false, false,
+		},
+		{
 			"success - ReCheckTx",
 			func() sdk.Tx {
 				signedTx := evmtypes.NewTx(ethTxParams)
@@ -137,6 +298,34 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 			}, false, true, true,
 		},
 		{
+			"success - ReCheckTx, onBehalf - authorized",
+			func() sdk.Tx {
+				signedTx := evmtypes.NewTx(ethTxParams)
+				signedTx.From = addr.Hex()
+				signedTx.OnBehalf = onBehalf.Hex()
+
+				grantee := sdk.AccAddress(addr.Bytes())
+				granter := sdk.AccAddress(onBehalf.Bytes())
+				a := authz.NewGenericAuthorization(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))
+				err := suite.app.AuthzKeeper.SaveGrant(suite.ctx, grantee, granter, a, nil)
+				suite.Require().NoError(err)
+
+				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
+				return tx
+			}, false, true, true,
+		},
+		{
+			"fail - ReCheckTx, onBehalf - unauthorized",
+			func() sdk.Tx {
+				signedTx := evmtypes.NewTx(ethTxParams)
+				signedTx.From = addr.Hex()
+				signedTx.OnBehalf = onBehalf.Hex()
+
+				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
+				return tx
+			}, false, true, false,
+		},
+		{
 			"success - CheckTx (cosmos tx not signed)",
 			func() sdk.Tx {
 				signedTx := evmtypes.NewTx(ethTxParams)
@@ -145,6 +334,34 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
 				return tx
 			}, false, true, true,
+		},
+		{
+			"success - CheckTx (cosmos tx not signed), OnBehalf - authorized",
+			func() sdk.Tx {
+				signedTx := evmtypes.NewTx(ethTxParams)
+				signedTx.From = addr.Hex()
+				signedTx.OnBehalf = onBehalf.Hex()
+
+				grantee := sdk.AccAddress(addr.Bytes())
+				granter := sdk.AccAddress(onBehalf.Bytes())
+				a := authz.NewGenericAuthorization(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))
+				err := suite.app.AuthzKeeper.SaveGrant(suite.ctx, grantee, granter, a, nil)
+				suite.Require().NoError(err)
+
+				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
+				return tx
+			}, false, true, true,
+		},
+		{
+			"fail - CheckTx (cosmos tx not signed), OnBehalf - unauthorized",
+			func() sdk.Tx {
+				signedTx := evmtypes.NewTx(ethTxParams)
+				signedTx.From = addr.Hex()
+				signedTx.OnBehalf = onBehalf.Hex()
+
+				tx := suite.CreateTestTx(signedTx, privKey, 1, false)
+				return tx
+			}, false, true, false,
 		},
 		{
 			"fail - CheckTx (cosmos tx is not valid)",
