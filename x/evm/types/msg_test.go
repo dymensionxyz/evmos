@@ -33,6 +33,7 @@ type MsgsTestSuite struct {
 	signer        keyring.Signer
 	from          common.Address
 	to            common.Address
+	onBehalf      common.Address
 	chainID       *big.Int
 	hundredBigInt *big.Int
 
@@ -45,10 +46,12 @@ func TestMsgsTestSuite(t *testing.T) {
 
 func (suite *MsgsTestSuite) SetupTest() {
 	from, privFrom := utiltx.NewAddrKey()
+	onBehalf, _ := utiltx.NewAddrKey()
 
 	suite.signer = utiltx.NewSigner(privFrom)
 	suite.from = from
 	suite.to = utiltx.GenerateAddress()
+	suite.onBehalf = onBehalf
 	suite.chainID = big.NewInt(1)
 	suite.hundredBigInt = big.NewInt(100)
 
@@ -460,6 +463,46 @@ func (suite *MsgsTestSuite) TestMsgEthereumTx_ValidateBasic() {
 			}
 			tx := types.NewTx(evmTx)
 			tx.From = tc.from
+
+			// apply nil assignment here to test ValidateBasic function instead of NewTx
+			if strings.Contains(tc.msg, "nil tx.Data") {
+				tx.Data = nil
+			}
+
+			// for legacy_Tx need to sign tx because the chainID is derived
+			// from signature
+			if tc.accessList == nil && tc.from == suite.from.Hex() {
+				ethSigner := ethtypes.LatestSignerForChainID(tc.chainID)
+				err := tx.Sign(ethSigner, suite.signer)
+				suite.Require().NoError(err)
+			}
+
+			err := tx.ValidateBasic()
+
+			if tc.expectPass {
+				suite.Require().NoError(err)
+			} else {
+				suite.Require().Error(err)
+				suite.Require().Contains(err.Error(), tc.errMsg)
+			}
+		})
+
+		// run the same test but with the onBehalf address
+		suite.Run("on_behalf_"+tc.msg, func() {
+			to := common.HexToAddress(tc.to)
+			evmTx := &types.EvmTxArgs{
+				ChainID:   tc.chainID,
+				Nonce:     1,
+				To:        &to,
+				Amount:    tc.amount,
+				GasLimit:  tc.gasLimit,
+				GasPrice:  tc.gasPrice,
+				GasFeeCap: tc.gasFeeCap,
+				Accesses:  tc.accessList,
+			}
+			tx := types.NewTx(evmTx)
+			tx.From = tc.from
+			tx.OnBehalf = suite.onBehalf.Hex()
 
 			// apply nil assignment here to test ValidateBasic function instead of NewTx
 			if strings.Contains(tc.msg, "nil tx.Data") {

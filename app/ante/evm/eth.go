@@ -78,7 +78,8 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 			return ctx, errorsmod.Wrapf(err, "failed to unpack tx data any for tx %d", i)
 		}
 
-		// sender address should be in the tx cache from the previous AnteHandle call
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
 		from := msgEthTx.GetFrom()
 		if from.Empty() {
 			return ctx, errorsmod.Wrap(errortypes.ErrInvalidAddress, "from address cannot be empty")
@@ -188,6 +189,9 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 		if !ok {
 			return ctx, errorsmod.Wrapf(errortypes.ErrUnknownRequest, "invalid message type %T, expected %T", msg, (*evmtypes.MsgEthereumTx)(nil))
 		}
+
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
 		from := msgEthTx.GetFrom()
 
 		txData, err := evmtypes.UnpackTxData(msgEthTx.Data)
@@ -337,9 +341,13 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		stateDB := statedb.New(ctx, ctd.evmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes())))
 		evm := ctd.evmKeeper.NewEVM(ctx, coreMsg, cfg, evmtypes.NewNoOpTracer(), stateDB)
 
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
+		sender := common.BytesToAddress(msgEthTx.GetFrom())
+
 		// check that caller has enough balance to cover asset transfer for **topmost** call
 		// NOTE: here the gas consumed is from the context with the infinite gas meter
-		if coreMsg.Value().Sign() > 0 && !evm.Context.CanTransfer(stateDB, coreMsg.From(), coreMsg.Value()) {
+		if coreMsg.Value().Sign() > 0 && !evm.Context.CanTransfer(stateDB, sender, coreMsg.Value()) {
 			return ctx, errorsmod.Wrapf(
 				errortypes.ErrInsufficientFunds,
 				"failed to transfer %s from address %s using the EVM block context transfer function",
@@ -366,7 +374,8 @@ func NewEthIncrementSenderSequenceDecorator(ak evmtypes.AccountKeeper) EthIncrem
 
 // AnteHandle handles incrementing the sequence of the signer (i.e. sender). If the transaction is a
 // contract creation, the nonce will be incremented during the transaction execution and not within
-// this AnteHandler decorator.
+// this AnteHandler decorator. If the transaction is executed on behalf, increase the sequence for
+// both granter and grantee.
 func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	for _, msg := range tx.GetMsgs() {
 		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
@@ -379,31 +388,48 @@ func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx s
 			return ctx, errorsmod.Wrap(err, "failed to unpack tx data")
 		}
 
-		// increase sequence of sender
-		acc := issd.ak.GetAccount(ctx, msgEthTx.GetFrom())
-		if acc == nil {
-			return ctx, errorsmod.Wrapf(
-				errortypes.ErrUnknownAddress,
-				"account %s is nil", common.BytesToAddress(msgEthTx.GetFrom().Bytes()),
-			)
-		}
-		nonce := acc.GetSequence()
-
-		// we merged the nonce verification to nonce increment, so when tx includes multiple messages
-		// with same sender, they'll be accepted.
-		if txData.GetNonce() != nonce {
-			return ctx, errorsmod.Wrapf(
-				errortypes.ErrInvalidSequence,
-				"invalid nonce; got %d, expected %d", txData.GetNonce(), nonce,
-			)
+		sender := common.HexToAddress(msgEthTx.From)
+		err = issd.increaseSequence(ctx, txData, sender.Bytes())
+		if err != nil {
+			return ctx, errorsmod.Wrapf(err, "increase sequence for sender %s", sender.String())
 		}
 
-		if err := acc.SetSequence(nonce + 1); err != nil {
-			return ctx, errorsmod.Wrapf(err, "failed to set sequence to %d", acc.GetSequence()+1)
+		if msgEthTx.OnBehalf != "" {
+			granter := common.HexToAddress(msgEthTx.OnBehalf)
+			err = issd.increaseSequence(ctx, txData, granter.Bytes())
+			if err != nil {
+				return ctx, errorsmod.Wrapf(err, "increase sequence for granter %s", granter.String())
+			}
 		}
-
-		issd.ak.SetAccount(ctx, acc)
 	}
 
 	return next(ctx, tx, simulate)
+}
+
+func (issd EthIncrementSenderSequenceDecorator) increaseSequence(ctx sdk.Context, txData evmtypes.TxData, account sdk.AccAddress) error {
+	// increase sequence of sender
+	acc := issd.ak.GetAccount(ctx, account)
+	if acc == nil {
+		return errorsmod.Wrapf(
+			errortypes.ErrUnknownAddress,
+			"account %s is nil", common.BytesToAddress(account.Bytes()),
+		)
+	}
+	nonce := acc.GetSequence()
+
+	// we merged the nonce verification to nonce increment, so when tx includes multiple messages
+	// with same sender, they'll be accepted.
+	if txData.GetNonce() != nonce {
+		return errorsmod.Wrapf(
+			errortypes.ErrInvalidSequence,
+			"invalid nonce; got %d, expected %d", txData.GetNonce(), nonce,
+		)
+	}
+
+	if err := acc.SetSequence(nonce + 1); err != nil {
+		return errorsmod.Wrapf(err, "failed to set sequence to %d", acc.GetSequence()+1)
+	}
+
+	issd.ak.SetAccount(ctx, acc)
+	return nil
 }

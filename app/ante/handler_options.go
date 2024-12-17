@@ -55,6 +55,7 @@ type HandlerOptions struct {
 	SigGasConsumer         func(meter sdk.GasMeter, sig signing.SignatureV2, params authtypes.Params) error
 	MaxTxGasWanted         uint64
 	TxFeeChecker           anteutils.TxFeeChecker
+	AuthzKeeper            evmante.AuthzKeeper
 }
 
 // Validate checks if the keepers are defined
@@ -95,6 +96,9 @@ func (options HandlerOptions) Validate() error {
 	if options.TxFeeChecker == nil {
 		return errorsmod.Wrap(errortypes.ErrLogic, "tx fee checker is required for AnteHandler")
 	}
+	if options.AuthzKeeper == nil {
+		return errorsmod.Wrap(errortypes.ErrLogic, "authz keeper is required for AnteHandler")
+	}
 	return nil
 }
 
@@ -109,10 +113,7 @@ func newEVMAnteHandler(options HandlerOptions) sdk.AnteHandler {
 		evmante.NewEthMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		evmante.NewEthValidateBasicDecorator(options.EvmKeeper),
 		evmante.NewEthSigVerificationDecorator(options.EvmKeeper),
-		// TODO: here we need to put an auth decorator
-		//  increase the account sequence number
-		//  replace from with OnBehalf
-		//  verify authz
+		evmante.NewAuthorizationDecorator(options.AuthzKeeper),
 		evmante.NewEthAccountVerificationDecorator(options.AccountKeeper, options.EvmKeeper),
 		evmante.NewCanTransferDecorator(options.EvmKeeper),
 		evmante.NewEthVestingTransactionDecorator(options.AccountKeeper, options.BankKeeper, options.EvmKeeper),

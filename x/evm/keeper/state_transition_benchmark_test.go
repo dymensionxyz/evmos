@@ -176,7 +176,7 @@ func BenchmarkApplyTransaction(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx)
+		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx, suite.address)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -203,7 +203,7 @@ func BenchmarkApplyTransactionWithLegacyTx(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx)
+		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx, suite.address)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -230,7 +230,7 @@ func BenchmarkApplyTransactionWithDynamicFeeTx(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx)
+		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx, suite.address)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -266,7 +266,7 @@ func BenchmarkApplyMessage(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
+		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true, m.From())
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -302,7 +302,7 @@ func BenchmarkApplyMessageWithLegacyTx(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
+		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true, m.From())
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -337,7 +337,7 @@ func BenchmarkApplyMessageWithDynamicFeeTx(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
+		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true, m.From())
 		b.StopTimer()
 
 		require.NoError(b, err)

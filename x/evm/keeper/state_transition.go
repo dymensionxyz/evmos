@@ -145,7 +145,7 @@ func (k Keeper) GetHashFn(ctx sdk.Context) vm.GetHashFunc {
 // returning.
 //
 // For relevant discussion see: https://github.com/cosmos/cosmos-sdk/discussions/9072
-func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*types.MsgEthereumTxResponse, error) {
+func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction, from common.Address) (*types.MsgEthereumTxResponse, error) {
 	var (
 		bloom        *big.Int
 		bloomReceipt ethtypes.Bloom
@@ -176,7 +176,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	}
 
 	// pass true to commit the StateDB
-	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig, from)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "failed to apply ethereum core message")
 	}
@@ -260,14 +260,14 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 }
 
 // ApplyMessage calls ApplyMessageWithConfig with an empty TxConfig.
-func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger, commit bool) (*types.MsgEthereumTxResponse, error) {
+func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger, commit bool, from common.Address) (*types.MsgEthereumTxResponse, error) {
 	cfg, err := k.EVMConfig(ctx, sdk.ConsAddress(ctx.BlockHeader().ProposerAddress), k.eip155ChainID)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "failed to load evm config")
 	}
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
-	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig)
+	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig, from)
 }
 
 // ApplyMessageWithConfig computes the new state by applying the given message against the existing state.
@@ -314,6 +314,7 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context,
 	commit bool,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
+	from common.Address,
 ) (*types.MsgEthereumTxResponse, error) {
 	var (
 		ret   []byte // return bytes from evm execution
@@ -341,7 +342,7 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context,
 		}()
 	}
 
-	sender := vm.AccountRef(msg.From())
+	sender := vm.AccountRef(from)
 	contractCreation := msg.To() == nil
 	isLondon := cfg.ChainConfig.IsLondon(evm.Context.BlockNumber)
 
@@ -361,7 +362,7 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context,
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
 	if rules := cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil); rules.IsBerlin {
-		stateDB.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
+		stateDB.PrepareAccessList(from, msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
 	}
 
 	if contractCreation {

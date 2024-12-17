@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/evmos/evmos/v12/server/config"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 
@@ -223,7 +224,7 @@ func (k Keeper) CallEVMWithData(
 		!commit,               // isFake
 	)
 
-	res, err := k.evmKeeper.ApplyMessage(ctx, msg, evmtypes.NewNoOpTracer(), commit)
+	res, err := k.evmKeeper.ApplyMessage(ctx, msg, evmtypes.NewNoOpTracer(), commit, from)
 	if err != nil {
 		return nil, err
 	}

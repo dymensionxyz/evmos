@@ -246,7 +246,9 @@ func (msg MsgEthereumTx) GetSignBytes() []byte {
 // The function will fail if the sender address is not defined for the msg or if
 // the sender is not registered on the keyring
 func (msg *MsgEthereumTx) Sign(ethSigner ethtypes.Signer, keyringSigner keyring.Signer) error {
-	from := msg.GetFrom()
+	// Use the original sender address (not granter address if any).
+	// Otherwise, the signature will be invalid.
+	from := msg.GetOriginalFrom()
 	if from.Empty() {
 		return fmt.Errorf("sender address not defined for message")
 	}
@@ -295,13 +297,26 @@ func (msg MsgEthereumTx) GetEffectiveFee(baseFee *big.Int) *big.Int {
 }
 
 // GetFrom loads the ethereum sender address from the sigcache and returns an
-// sdk.AccAddress from its bytes
+// sdk.AccAddress from its bytes. If the sender is not found, it returns nil.
+// If the message has an OnBehalf field, it returns the address from that field.
 func (msg *MsgEthereumTx) GetFrom() sdk.AccAddress {
-	if msg.From == "" {
-		return nil
+	if msg.OnBehalf != "" {
+		return common.HexToAddress(msg.OnBehalf).Bytes()
 	}
+	if msg.From != "" {
+		return common.HexToAddress(msg.From).Bytes()
+	}
+	return nil
+}
 
-	return common.HexToAddress(msg.From).Bytes()
+// GetOriginalFrom loads the ethereum sender address from the sigcache and returns an
+// sdk.AccAddress from its bytes. Always returns the original sender address stored
+// in From field independently of OnBehalf field.
+func (msg *MsgEthereumTx) GetOriginalFrom() sdk.AccAddress {
+	if msg.From != "" {
+		return common.HexToAddress(msg.From).Bytes()
+	}
+	return nil
 }
 
 // AsTransaction creates an Ethereum Transaction type from the msg fields

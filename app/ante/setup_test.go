@@ -49,6 +49,11 @@ func (suite *AnteTestSuite) SetupTest() {
 	evmParams.EvmDenom = suite.denom
 	_ = suite.app.EvmKeeper.SetParams(suite.ctx, evmParams)
 
+	params := suite.app.FeeMarketKeeper.GetParams(suite.ctx)
+	params.MinGasPrice = sdk.NewDec(1)
+	err = suite.app.FeeMarketKeeper.SetParams(suite.ctx, params)
+	suite.Require().NoError(err)
+
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
 	suite.clientCtx = client.Context{}.WithTxConfig(encodingConfig.TxConfig)
 }
