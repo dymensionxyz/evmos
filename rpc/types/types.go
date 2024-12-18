@@ -49,6 +49,7 @@ type RPCTransaction struct {
 	BlockHash        *common.Hash         `json:"blockHash"`
 	BlockNumber      *hexutil.Big         `json:"blockNumber"`
 	From             common.Address       `json:"from"`
+	OriginalFrom     common.Address       `json:"originalFrom"`
 	Gas              hexutil.Uint64       `json:"gas"`
 	GasPrice         *hexutil.Big         `json:"gasPrice"`
 	GasFeeCap        *hexutil.Big         `json:"maxFeePerGas,omitempty"`

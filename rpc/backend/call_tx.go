@@ -93,14 +93,15 @@ func (b *Backend) Resend(args evmtypes.TransactionArgs, gasPrice *hexutil.Big, g
 		}
 
 		pTx := p.AsTransaction()
-
 		wantSigHash := signer.Hash(matchTx)
-		pFrom, err := ethtypes.Sender(signer, pTx)
+
+		coreMsg, err := p.AsMessage(signer, nil)
 		if err != nil {
 			continue
 		}
+		pFrom := coreMsg.From()
 
-		if pFrom == *args.From && signer.Hash(pTx) == wantSigHash {
+		if pFrom == args.GetFrom() && signer.Hash(pTx) == wantSigHash {
 			// Match. Re-sign and send the transaction.
 			if gasPrice != nil && (*big.Int)(gasPrice).Sign() != 0 {
 				args.GasPrice = gasPrice
@@ -244,8 +245,9 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 	}
 	if args.Nonce == nil {
 		// get the nonce from the account retriever
-		// ignore error in case tge account doesn't exist yet
-		nonce, _ := b.getAccountNonce(*args.From, true, 0, b.logger) // #nosec G703s
+		// ignore error in case the account doesn't exist yet
+		// the account may be the original sender or the granter
+		nonce, _ := b.getAccountNonce(args.GetFrom(), true, 0, b.logger) // #nosec G703s
 		args.Nonce = (*hexutil.Uint64)(&nonce)
 	}
 
@@ -278,6 +280,7 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 		callArgs := evmtypes.TransactionArgs{
 			From:                 args.From,
 			To:                   args.To,
+			OnBehalf:             args.OnBehalf,
 			Gas:                  args.Gas,
 			GasPrice:             args.GasPrice,
 			MaxFeePerGas:         args.MaxFeePerGas,

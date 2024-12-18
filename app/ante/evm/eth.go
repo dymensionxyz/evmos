@@ -303,7 +303,10 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		}
 
 		baseFee := ctd.evmKeeper.GetBaseFee(ctx, ethCfg)
-		coreMsg := msgEthTx.AsMessage(baseFee)
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
+		from := common.BytesToAddress(msgEthTx.GetFrom())
+		coreMsg := evmtypes.TxAsMessage(msgEthTx.AsTransaction(), baseFee, from)
 
 		if evmtypes.IsLondon(ethCfg, ctx.BlockHeight()) {
 			if baseFee == nil {
@@ -379,18 +382,13 @@ func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx s
 			return ctx, errorsmod.Wrap(err, "failed to unpack tx data")
 		}
 
-		sender := common.HexToAddress(msgEthTx.From)
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
+		sender := common.BytesToAddress(msgEthTx.GetFrom())
+
 		err = issd.increaseSequence(ctx, txData, sender.Bytes())
 		if err != nil {
 			return ctx, errorsmod.Wrapf(err, "increase sequence for sender %s", sender.String())
-		}
-
-		if msgEthTx.OnBehalf != "" {
-			granter := common.HexToAddress(msgEthTx.OnBehalf)
-			err = issd.increaseSequence(ctx, txData, granter.Bytes())
-			if err != nil {
-				return ctx, errorsmod.Wrapf(err, "increase sequence for granter %s", granter.String())
-			}
 		}
 	}
 

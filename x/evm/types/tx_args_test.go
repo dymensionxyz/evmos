@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/evmos/evmos/v12/testutil/tx"
 
 	"github.com/evmos/evmos/v12/x/evm/types"
 )
@@ -19,20 +20,22 @@ func (suite *TxDataTestSuite) TestTxArgsString() {
 		{
 			"empty tx args",
 			types.TransactionArgs{},
-			"TransactionArgs{From:<nil>, To:<nil>, Gas:<nil>, Nonce:<nil>, Data:<nil>, Input:<nil>, AccessList:<nil>}",
+			"TransactionArgs{From:<nil>, To:<nil>, OnBehalf:<nil>, Gas:<nil>, Nonce:<nil>, Data:<nil>, Input:<nil>, AccessList:<nil>}",
 		},
 		{
 			"tx args with fields",
 			types.TransactionArgs{
 				From:       &suite.addr,
 				To:         &suite.addr,
+				OnBehalf:   &suite.addr,
 				Gas:        &suite.hexUint64,
 				Nonce:      &suite.hexUint64,
 				Input:      &suite.hexInputBytes,
 				Data:       &suite.hexDataBytes,
 				AccessList: &ethtypes.AccessList{},
 			},
-			fmt.Sprintf("TransactionArgs{From:%v, To:%v, Gas:%v, Nonce:%v, Data:%v, Input:%v, AccessList:%v}",
+			fmt.Sprintf("TransactionArgs{From:%v, To:%v, OnBehalf:%v, Gas:%v, Nonce:%v, Data:%v, Input:%v, AccessList:%v}",
+				&suite.addr,
 				&suite.addr,
 				&suite.addr,
 				&suite.hexUint64,
@@ -99,6 +102,8 @@ func (suite *TxDataTestSuite) TestConvertTxArgsEthTx() {
 }
 
 func (suite *TxDataTestSuite) TestToMessageEVM() {
+	addr := tx.GenerateAddress()
+
 	testCases := []struct {
 		name         string
 		txArgs       types.TransactionArgs
@@ -118,6 +123,27 @@ func (suite *TxDataTestSuite) TestToMessageEVM() {
 			types.TransactionArgs{
 				From:                 &suite.addr,
 				To:                   &suite.addr,
+				Gas:                  &suite.hexUint64,
+				GasPrice:             &suite.hexBigInt,
+				MaxFeePerGas:         &suite.hexBigInt,
+				MaxPriorityFeePerGas: &suite.hexBigInt,
+				Value:                &suite.hexBigInt,
+				Nonce:                &suite.hexUint64,
+				Data:                 &suite.hexDataBytes,
+				Input:                &suite.hexInputBytes,
+				AccessList:           &ethtypes.AccessList{{Address: suite.addr, StorageKeys: []common.Hash{{0}}}},
+				ChainID:              &suite.hexBigInt,
+			},
+			uint64(0),
+			nil,
+			true,
+		},
+		{
+			"specify onBehalf",
+			types.TransactionArgs{
+				From:                 &suite.addr,
+				To:                   &suite.addr,
+				OnBehalf:             &addr,
 				Gas:                  &suite.hexUint64,
 				GasPrice:             &suite.hexBigInt,
 				MaxFeePerGas:         &suite.hexBigInt,
@@ -227,6 +253,8 @@ func (suite *TxDataTestSuite) TestToMessageEVM() {
 }
 
 func (suite *TxDataTestSuite) TestGetFrom() {
+	addr := tx.GenerateAddress()
+
 	testCases := []struct {
 		name       string
 		txArgs     types.TransactionArgs
@@ -241,6 +269,21 @@ func (suite *TxDataTestSuite) TestGetFrom() {
 			"non-empty from field",
 			types.TransactionArgs{
 				From: &suite.addr,
+			},
+			suite.addr,
+		},
+		{
+			"empty from, non-empty onBehalf",
+			types.TransactionArgs{
+				OnBehalf: &suite.addr,
+			},
+			suite.addr,
+		},
+		{
+			"non-empty from and onBehalf",
+			types.TransactionArgs{
+				From:     &addr,
+				OnBehalf: &suite.addr,
 			},
 			suite.addr,
 		},

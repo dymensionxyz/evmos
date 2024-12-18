@@ -593,8 +593,6 @@ func (suite *KeeperTestSuite) TestApplyMessageOnBehalf() {
 
 	res, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, msg, tracer, true)
 
-	res.Hash
-
 	suite.Require().NoError(err)
 	suite.Require().Equal(expectedGasUsed, res.GasUsed)
 	suite.Require().False(res.Failed())
@@ -745,7 +743,8 @@ func (suite *KeeperTestSuite) createContractGethMsg(nonce uint64, signer ethtype
 	if err != nil {
 		return nil, err
 	}
-	return ethMsg.AsMessage(nil), nil
+	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(suite.ctx.BlockHeight()))
+	return ethMsg.AsMessage(msgSigner, nil)
 }
 
 func (suite *KeeperTestSuite) createContractGethMsgOnBehalf(nonce uint64, signer ethtypes.Signer, gasPrice *big.Int, onBehalf common.Address) (core.Message, error) {
@@ -754,7 +753,7 @@ func (suite *KeeperTestSuite) createContractGethMsgOnBehalf(nonce uint64, signer
 		return nil, err
 	}
 	ethMsg.OnBehalf = onBehalf.Hex()
-	return ethMsg.AsMessage(nil), nil
+	return ethMsg.AsMessage(nil, nil)
 }
 
 func (suite *KeeperTestSuite) createContractMsgTx(nonce uint64, signer ethtypes.Signer, gasPrice *big.Int) (*types.MsgEthereumTx, error) {

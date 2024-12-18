@@ -330,11 +330,26 @@ func (msg MsgEthereumTx) AsTransaction() *ethtypes.Transaction {
 	return ethtypes.NewTx(txData.AsEthereumData())
 }
 
-// AsMessage creates an Ethereum core.Message from the msg fields. MsgEthereumTx must
-// have a filled From field (optionally, OnBehalf). From is filled automatically
-// in the EthSigVerificationDecorator ante handler.
-func (msg MsgEthereumTx) AsMessage(baseFee *big.Int) core.Message {
-	return TxAsMessage(msg.AsTransaction(), baseFee, common.BytesToAddress(msg.GetFrom()))
+// AsMessage creates an Ethereum core.Message from the msg fields. If the msg is impersonated, ie
+// has non-empty OnBehalf, then From is replaced with it. Otherwise, the from address is derived
+// from the signature.
+func (msg MsgEthereumTx) AsMessage(signer ethtypes.Signer, baseFee *big.Int) (core.Message, error) {
+	tx := msg.AsTransaction()
+
+	var from common.Address
+	if msg.OnBehalf != "" {
+		// use the grater address if present
+		from = common.HexToAddress(msg.OnBehalf)
+	} else {
+		// derive the sender address from the signature
+		var err error
+		from, err = ethtypes.Sender(signer, tx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return TxAsMessage(tx, baseFee, from), nil
 }
 
 // GetSender extracts the sender address from the signature values using the latest signer for the given chainID.
@@ -400,7 +415,7 @@ func (msg *MsgEthereumTx) BuildTx(b client.TxBuilder, evmDenom string) (signing.
 	return tx, nil
 }
 
-// TxAsMessage ia a modified version of ethtypes.AsMessage that modifies from address.
+// TxAsMessage ia a modified version of ethtypes.AsMessage that allows to set from address explicitly.
 func TxAsMessage(tx *ethtypes.Transaction, baseFee *big.Int, from common.Address) ethtypes.Message {
 	gasPrice := new(big.Int).Set(tx.GasPrice())
 	gasFeeCap := new(big.Int).Set(tx.GasFeeCap())

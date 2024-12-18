@@ -142,11 +142,12 @@ func newNativeMessage(
 	data []byte,
 	accessList ethtypes.AccessList,
 ) (core.Message, error) {
+	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(blockHeight))
 	msg, baseFee, err := newEthMsgTx(nonce, address, krSigner, ethSigner, txType, data, accessList)
 	if err != nil {
 		return nil, err
 	}
-	return msg.AsMessage(baseFee), nil
+	return msg.AsMessage(msgSigner, baseFee)
 }
 
 func newNativeMessageOnBehalf(
@@ -164,7 +165,7 @@ func newNativeMessageOnBehalf(
 		return nil, err
 	}
 	msg.OnBehalf = onBehalf.Hex()
-	return msg.AsMessage(baseFee), nil
+	return msg.AsMessage(nil, baseFee)
 }
 
 func BenchmarkApplyTransaction(b *testing.B) {
