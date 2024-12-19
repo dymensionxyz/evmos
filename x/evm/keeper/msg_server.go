@@ -44,7 +44,7 @@ var _ types.MsgServer = &Keeper{}
 func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*types.MsgEthereumTxResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	sender := msg.GetFrom()
+	sender := msg.GetEffectiveSender()
 	tx := msg.AsTransaction()
 	txIndex := k.GetTxIndexTransient(ctx)
 

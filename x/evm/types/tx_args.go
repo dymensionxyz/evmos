@@ -35,7 +35,7 @@ import (
 type TransactionArgs struct {
 	From                 *common.Address `json:"from"`
 	To                   *common.Address `json:"to"`
-	OnBehalf             *common.Address `json:"on_behalf"`
+	OnBehalf             *common.Address `json:"onBehalf"`
 	Gas                  *hexutil.Uint64 `json:"gas"`
 	GasPrice             *hexutil.Big    `json:"gasPrice"`
 	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
@@ -184,7 +184,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (e
 
 	// Set sender address or use zero address if none specified.
 	// If OnBehalf is set, use that as the sender.
-	addr := args.GetFrom()
+	addr := args.GetEffectiveSender()
 
 	// Set default gas & gas price if none were set
 	gas := globalGasCap
@@ -251,9 +251,9 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (e
 	return msg, nil
 }
 
-// GetFrom retrieves the transaction sender address.
+// GetEffectiveSender retrieves the transaction sender address.
 // If the message has an OnBehalf field, it returns the address from that field.
-func (args *TransactionArgs) GetFrom() common.Address {
+func (args *TransactionArgs) GetEffectiveSender() common.Address {
 	if args.OnBehalf != nil {
 		return *args.OnBehalf
 	}

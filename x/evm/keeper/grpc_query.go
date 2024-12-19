@@ -247,7 +247,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	}
 
 	// ApplyMessageWithConfig expect correct nonce set in msg
-	nonce := k.GetNonce(ctx, args.GetFrom())
+	nonce := k.GetNonce(ctx, args.GetEffectiveSender())
 	args.Nonce = (*hexutil.Uint64)(&nonce)
 
 	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
@@ -322,7 +322,7 @@ func (k Keeper) EstimateGas(c context.Context, req *types.EthCallRequest) (*type
 	}
 
 	// ApplyMessageWithConfig expect correct nonce set in msg
-	nonce := k.GetNonce(ctx, args.GetFrom())
+	nonce := k.GetNonce(ctx, args.GetEffectiveSender())
 	args.Nonce = (*hexutil.Uint64)(&nonce)
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))

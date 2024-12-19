@@ -221,7 +221,7 @@ func (msg *MsgEthereumTx) GetSigners() []sdk.AccAddress {
 		panic(err)
 	}
 
-	sender, err := msg.GetSender(data.GetChainID())
+	sender, err := msg.DeriveSender(data.GetChainID())
 	if err != nil {
 		panic(err)
 	}
@@ -297,10 +297,10 @@ func (msg MsgEthereumTx) GetEffectiveFee(baseFee *big.Int) *big.Int {
 	return txData.EffectiveFee(baseFee)
 }
 
-// GetFrom loads the ethereum sender address from the sigcache and returns an
+// GetEffectiveSender loads the ethereum sender address from the sigcache and returns an
 // sdk.AccAddress from its bytes. If the sender is not found, it returns nil.
 // If the message has an OnBehalf field, it returns the address from that field.
-func (msg *MsgEthereumTx) GetFrom() sdk.AccAddress {
+func (msg *MsgEthereumTx) GetEffectiveSender() sdk.AccAddress {
 	if msg.OnBehalf != "" {
 		return common.HexToAddress(msg.OnBehalf).Bytes()
 	}
@@ -352,8 +352,8 @@ func (msg MsgEthereumTx) AsMessage(signer ethtypes.Signer, baseFee *big.Int) (co
 	return TxAsMessage(tx, baseFee, from), nil
 }
 
-// GetSender extracts the sender address from the signature values using the latest signer for the given chainID.
-func (msg *MsgEthereumTx) GetSender(chainID *big.Int) (common.Address, error) {
+// DeriveSender extracts the sender address from the signature values using the latest signer for the given chainID.
+func (msg *MsgEthereumTx) DeriveSender(chainID *big.Int) (common.Address, error) {
 	signer := ethtypes.LatestSignerForChainID(chainID)
 	from, err := signer.Sender(msg.AsTransaction())
 	if err != nil {

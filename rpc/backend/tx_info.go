@@ -201,13 +201,13 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 	}
 
 	// original sender is the address that signed the transaction
-	originalFrom, err := ethMsg.GetSender(chainID.ToInt())
+	originalFrom, err := ethMsg.DeriveSender(chainID.ToInt())
 	if err != nil {
 		return nil, err
 	}
 	// from is either the original sender or the granter address
 	// if the transaction is impersonated
-	from := common.BytesToAddress(ethMsg.GetFrom())
+	from := common.BytesToAddress(ethMsg.GetEffectiveSender())
 
 	// parse tx logs from events
 	msgIndex := int(res.MsgIndex) // #nosec G701 -- checked for int overflow already

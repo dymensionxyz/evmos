@@ -72,7 +72,7 @@ func (vtd EthVestingTransactionDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx,
 			)
 		}
 
-		acc := vtd.ak.GetAccount(ctx, msgEthTx.GetFrom())
+		acc := vtd.ak.GetAccount(ctx, msgEthTx.GetEffectiveSender())
 		if acc == nil {
 			return ctx, errorsmod.Wrapf(errortypes.ErrUnknownAddress,
 				"account %s does not exist", acc)

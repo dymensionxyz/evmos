@@ -23,6 +23,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
@@ -79,7 +80,7 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 
 		// Sender address should be in the tx cache from the previous AnteHandle call.
 		// From may be either actual from address or the granter address.
-		from := msgEthTx.GetFrom()
+		from := msgEthTx.GetEffectiveSender()
 		if from.Empty() {
 			return ctx, errorsmod.Wrap(errortypes.ErrInvalidAddress, "from address cannot be empty")
 		}
@@ -191,7 +192,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 
 		// Sender address should be in the tx cache from the previous AnteHandle call.
 		// From may be either actual from address or the granter address.
-		from := msgEthTx.GetFrom()
+		from := msgEthTx.GetEffectiveSender()
 
 		txData, err := evmtypes.UnpackTxData(msgEthTx.Data)
 		if err != nil {
@@ -295,6 +296,7 @@ func NewCanTransferDecorator(evmKeeper EVMKeeper) CanTransferDecorator {
 func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	params := ctd.evmKeeper.GetParams(ctx)
 	ethCfg := params.ChainConfig.EthereumConfig(ctd.evmKeeper.ChainID())
+	signer := ethtypes.MakeSigner(ethCfg, big.NewInt(ctx.BlockHeight()))
 
 	for _, msg := range tx.GetMsgs() {
 		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
@@ -305,8 +307,13 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		baseFee := ctd.evmKeeper.GetBaseFee(ctx, ethCfg)
 		// Sender address should be in the tx cache from the previous AnteHandle call.
 		// From may be either actual from address or the granter address.
-		from := common.BytesToAddress(msgEthTx.GetFrom())
-		coreMsg := evmtypes.TxAsMessage(msgEthTx.AsTransaction(), baseFee, from)
+		coreMsg, err := msgEthTx.AsMessage(signer, baseFee)
+		if err != nil {
+			return ctx, errorsmod.Wrapf(
+				err,
+				"failed to create an ethereum core.Message from signer %T", signer,
+			)
+		}
 
 		if evmtypes.IsLondon(ethCfg, ctx.BlockHeight()) {
 			if baseFee == nil {
@@ -335,13 +342,9 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		stateDB := statedb.New(ctx, ctd.evmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes())))
 		evm := ctd.evmKeeper.NewEVM(ctx, coreMsg, cfg, evmtypes.NewNoOpTracer(), stateDB)
 
-		// Sender address should be in the tx cache from the previous AnteHandle call.
-		// From may be either actual from address or the granter address.
-		sender := common.BytesToAddress(msgEthTx.GetFrom())
-
 		// check that caller has enough balance to cover asset transfer for **topmost** call
 		// NOTE: here the gas consumed is from the context with the infinite gas meter
-		if coreMsg.Value().Sign() > 0 && !evm.Context.CanTransfer(stateDB, sender, coreMsg.Value()) {
+		if coreMsg.Value().Sign() > 0 && !evm.Context.CanTransfer(stateDB, coreMsg.From(), coreMsg.Value()) {
 			return ctx, errorsmod.Wrapf(
 				errortypes.ErrInsufficientFunds,
 				"failed to transfer %s from address %s using the EVM block context transfer function",
@@ -368,8 +371,8 @@ func NewEthIncrementSenderSequenceDecorator(ak evmtypes.AccountKeeper) EthIncrem
 
 // AnteHandle handles incrementing the sequence of the signer (i.e. sender). If the transaction is a
 // contract creation, the nonce will be incremented during the transaction execution and not within
-// this AnteHandler decorator. If the transaction is executed on behalf, increase the sequence for
-// both granter and grantee.
+// this AnteHandler decorator. If the transaction is executed on behalf, increase the sequence ONLY
+// for granter. The tx must have a granter's nonce.
 func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	for _, msg := range tx.GetMsgs() {
 		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
@@ -382,14 +385,32 @@ func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx s
 			return ctx, errorsmod.Wrap(err, "failed to unpack tx data")
 		}
 
+		// Increase sequence of the sender.
 		// Sender address should be in the tx cache from the previous AnteHandle call.
 		// From may be either actual from address or the granter address.
-		sender := common.BytesToAddress(msgEthTx.GetFrom())
-
-		err = issd.increaseSequence(ctx, txData, sender.Bytes())
-		if err != nil {
-			return ctx, errorsmod.Wrapf(err, "increase sequence for sender %s", sender.String())
+		acc := issd.ak.GetAccount(ctx, msgEthTx.GetEffectiveSender())
+		if acc == nil {
+			return ctx, errorsmod.Wrapf(
+				errortypes.ErrUnknownAddress,
+				"account %s is nil", common.BytesToAddress(msgEthTx.GetEffectiveSender().Bytes()),
+			)
 		}
+		nonce := acc.GetSequence()
+
+		// we merged the nonce verification to nonce increment, so when tx includes multiple messages
+		// with same sender, they'll be accepted.
+		if txData.GetNonce() != nonce {
+			return ctx, errorsmod.Wrapf(
+				errortypes.ErrInvalidSequence,
+				"invalid nonce; got %d, expected %d", txData.GetNonce(), nonce,
+			)
+		}
+
+		if err := acc.SetSequence(nonce + 1); err != nil {
+			return ctx, errorsmod.Wrapf(err, "failed to set sequence to %d", acc.GetSequence()+1)
+		}
+
+		issd.ak.SetAccount(ctx, acc)
 	}
 
 	return next(ctx, tx, simulate)

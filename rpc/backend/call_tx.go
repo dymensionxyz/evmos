@@ -101,7 +101,7 @@ func (b *Backend) Resend(args evmtypes.TransactionArgs, gasPrice *hexutil.Big, g
 		}
 		pFrom := coreMsg.From()
 
-		if pFrom == args.GetFrom() && signer.Hash(pTx) == wantSigHash {
+		if pFrom == args.GetEffectiveSender() && signer.Hash(pTx) == wantSigHash {
 			// Match. Re-sign and send the transaction.
 			if gasPrice != nil && (*big.Int)(gasPrice).Sign() != 0 {
 				args.GasPrice = gasPrice
@@ -247,7 +247,7 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 		// get the nonce from the account retriever
 		// ignore error in case the account doesn't exist yet
 		// the account may be the original sender or the granter
-		nonce, _ := b.getAccountNonce(args.GetFrom(), true, 0, b.logger) // #nosec G703s
+		nonce, _ := b.getAccountNonce(args.GetEffectiveSender(), true, 0, b.logger) // #nosec G703s
 		args.Nonce = (*hexutil.Uint64)(&nonce)
 	}
 

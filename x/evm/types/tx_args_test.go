@@ -289,7 +289,7 @@ func (suite *TxDataTestSuite) TestGetFrom() {
 		},
 	}
 	for _, tc := range testCases {
-		retrievedAddress := tc.txArgs.GetFrom()
+		retrievedAddress := tc.txArgs.GetEffectiveSender()
 		suite.Require().Equal(retrievedAddress, tc.expAddress)
 	}
 }
