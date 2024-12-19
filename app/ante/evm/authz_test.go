@@ -72,7 +72,7 @@ func (s *AnteTestSuite) TestAuthorizationDecorator() {
 			}
 
 			// Run AnteHandle
-			d := evmante.NewAuthorizationDecorator(s.app.AuthzKeeper)
+			d := evmante.NewEthAuthorizationDecorator(s.app.AuthzKeeper)
 			ctx, err := d.AnteHandle(s.ctx, tx, false, testutil.NextFn)
 
 			if tc.expPass {

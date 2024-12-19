@@ -113,7 +113,7 @@ func newEVMAnteHandler(options HandlerOptions) sdk.AnteHandler {
 		evmante.NewEthMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		evmante.NewEthValidateBasicDecorator(options.EvmKeeper),
 		evmante.NewEthSigVerificationDecorator(options.EvmKeeper),
-		evmante.NewAuthorizationDecorator(options.AuthzKeeper),
+		evmante.NewEthAuthorizationDecorator(options.AuthzKeeper),
 		evmante.NewEthAccountVerificationDecorator(options.AccountKeeper, options.EvmKeeper),
 		evmante.NewCanTransferDecorator(options.EvmKeeper),
 		evmante.NewEthVestingTransactionDecorator(options.AccountKeeper, options.BankKeeper, options.EvmKeeper),

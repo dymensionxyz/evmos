@@ -10,16 +10,16 @@ import (
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
-// AuthorizationDecorator takes care of authorization of transactions. If a transaction is executed
+// EthAuthorizationDecorator takes care of authorization of transactions. If a transaction is executed
 // on behalf of another account, it checks if the granter has granted permission to the grantee.
 // NOTE: This decorator does not perform any validation
-type AuthorizationDecorator struct {
+type EthAuthorizationDecorator struct {
 	authzKeeper AuthzKeeper
 }
 
-// NewAuthorizationDecorator creates a new NewAuthorizationDecorator
-func NewAuthorizationDecorator(authzKeeper AuthzKeeper) AuthorizationDecorator {
-	return AuthorizationDecorator{authzKeeper: authzKeeper}
+// NewEthAuthorizationDecorator creates a new NewEthAuthorizationDecorator
+func NewEthAuthorizationDecorator(authzKeeper AuthzKeeper) EthAuthorizationDecorator {
+	return EthAuthorizationDecorator{authzKeeper: authzKeeper}
 }
 
 // AnteHandle handles the authorization of the transaction.
@@ -29,7 +29,7 @@ func NewAuthorizationDecorator(authzKeeper AuthzKeeper) AuthorizationDecorator {
 //   - From must be non-empty
 //   - Both From and OnBehalf (if present) must be valid ethereum addresses in hex format
 //   - Grant must be generic
-func (d AuthorizationDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
+func (d EthAuthorizationDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	var ethMsgTypeURL = sdk.MsgTypeURL(new(evmtypes.MsgEthereumTx))
 
 	for _, msg := range tx.GetMsgs() {
