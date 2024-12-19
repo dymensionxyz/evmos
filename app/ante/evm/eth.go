@@ -23,7 +23,6 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
@@ -35,6 +34,7 @@ import (
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // EthAccountVerificationDecorator validates an account balance checks
@@ -414,32 +414,4 @@ func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx s
 	}
 
 	return next(ctx, tx, simulate)
-}
-
-func (issd EthIncrementSenderSequenceDecorator) increaseSequence(ctx sdk.Context, txData evmtypes.TxData, account sdk.AccAddress) error {
-	// increase sequence of sender
-	acc := issd.ak.GetAccount(ctx, account)
-	if acc == nil {
-		return errorsmod.Wrapf(
-			errortypes.ErrUnknownAddress,
-			"account %s is nil", common.BytesToAddress(account.Bytes()),
-		)
-	}
-	nonce := acc.GetSequence()
-
-	// we merged the nonce verification to nonce increment, so when tx includes multiple messages
-	// with same sender, they'll be accepted.
-	if txData.GetNonce() != nonce {
-		return errorsmod.Wrapf(
-			errortypes.ErrInvalidSequence,
-			"invalid nonce; got %d, expected %d", txData.GetNonce(), nonce,
-		)
-	}
-
-	if err := acc.SetSequence(nonce + 1); err != nil {
-		return errorsmod.Wrapf(err, "failed to set sequence to %d", acc.GetSequence()+1)
-	}
-
-	issd.ak.SetAccount(ctx, acc)
-	return nil
 }
