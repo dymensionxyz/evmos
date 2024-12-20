@@ -145,7 +145,7 @@ func (k Keeper) GetHashFn(ctx sdk.Context) vm.GetHashFunc {
 // returning.
 //
 // For relevant discussion see: https://github.com/cosmos/cosmos-sdk/discussions/9072
-func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*types.MsgEthereumTxResponse, error) {
+func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction, from common.Address) (*types.MsgEthereumTxResponse, error) {
 	var (
 		bloom        *big.Int
 		bloomReceipt ethtypes.Bloom
@@ -157,12 +157,11 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	}
 	txConfig := k.TxConfig(ctx, tx.Hash())
 
-	// get the signer according to the chain rules from the config and block height
-	signer := ethtypes.MakeSigner(cfg.ChainConfig, big.NewInt(ctx.BlockHeight()))
-	msg, err := tx.AsMessage(signer, cfg.BaseFee)
-	if err != nil {
-		return nil, errorsmod.Wrap(err, "failed to return ethereum transaction as core message")
-	}
+	// From must be non-empty address of either original sender or authorization granter.
+	// This is ensured in AnteHandler, see:
+	//   - EthValidateBasicDecorator: check that OnBehalf is valid if present
+	//   - EthSigVerificationDecorator: add From to MsgEthereumTx
+	msg := types.TxAsMessage(tx, cfg.BaseFee, from)
 
 	// snapshot to contain the tx processing and post processing in same scope
 	var commit func()

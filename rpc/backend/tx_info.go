@@ -200,10 +200,14 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		return nil, err
 	}
 
-	from, err := ethMsg.GetSender(chainID.ToInt())
+	// original sender is the address that signed the transaction
+	originalFrom, err := ethMsg.DeriveSender(chainID.ToInt())
 	if err != nil {
 		return nil, err
 	}
+	// from is either the original sender or the granter address
+	// if the transaction is impersonated
+	from := common.BytesToAddress(ethMsg.GetEffectiveSender())
 
 	// parse tx logs from events
 	msgIndex := int(res.MsgIndex) // #nosec G701 -- checked for int overflow already
@@ -247,9 +251,10 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		"transactionIndex": hexutil.Uint64(res.EthTxIndex),
 
 		// sender and receiver (contract or EOA) addreses
-		"from": from,
-		"to":   txData.GetTo(),
-		"type": hexutil.Uint(ethMsg.AsTransaction().Type()),
+		"from":          from,
+		"to":            txData.GetTo(),
+		"original_from": originalFrom,
+		"type":          hexutil.Uint(ethMsg.AsTransaction().Type()),
 	}
 
 	if logs == nil {

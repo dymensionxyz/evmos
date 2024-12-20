@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
+	"github.com/ethereum/go-ethereum/common/math"
 
 	errorsmod "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -220,7 +221,7 @@ func (msg *MsgEthereumTx) GetSigners() []sdk.AccAddress {
 		panic(err)
 	}
 
-	sender, err := msg.GetSender(data.GetChainID())
+	sender, err := msg.DeriveSender(data.GetChainID())
 	if err != nil {
 		panic(err)
 	}
@@ -246,7 +247,9 @@ func (msg MsgEthereumTx) GetSignBytes() []byte {
 // The function will fail if the sender address is not defined for the msg or if
 // the sender is not registered on the keyring
 func (msg *MsgEthereumTx) Sign(ethSigner ethtypes.Signer, keyringSigner keyring.Signer) error {
-	from := msg.GetFrom()
+	// Use the original sender address (not granter address if any).
+	// Otherwise, the signature will be invalid.
+	from := msg.GetOriginalFrom()
 	if from.Empty() {
 		return fmt.Errorf("sender address not defined for message")
 	}
@@ -294,14 +297,27 @@ func (msg MsgEthereumTx) GetEffectiveFee(baseFee *big.Int) *big.Int {
 	return txData.EffectiveFee(baseFee)
 }
 
-// GetFrom loads the ethereum sender address from the sigcache and returns an
-// sdk.AccAddress from its bytes
-func (msg *MsgEthereumTx) GetFrom() sdk.AccAddress {
-	if msg.From == "" {
-		return nil
+// GetEffectiveSender loads the ethereum sender address from the sigcache and returns an
+// sdk.AccAddress from its bytes. If the sender is not found, it returns nil.
+// If the message has an OnBehalf field, it returns the address from that field.
+func (msg *MsgEthereumTx) GetEffectiveSender() sdk.AccAddress {
+	if msg.OnBehalf != "" {
+		return common.HexToAddress(msg.OnBehalf).Bytes()
 	}
+	if msg.From != "" {
+		return common.HexToAddress(msg.From).Bytes()
+	}
+	return nil
+}
 
-	return common.HexToAddress(msg.From).Bytes()
+// GetOriginalFrom loads the ethereum sender address from the sigcache and returns an
+// sdk.AccAddress from its bytes. Always returns the original sender address stored
+// in From field independently of OnBehalf field.
+func (msg *MsgEthereumTx) GetOriginalFrom() sdk.AccAddress {
+	if msg.From != "" {
+		return common.HexToAddress(msg.From).Bytes()
+	}
+	return nil
 }
 
 // AsTransaction creates an Ethereum Transaction type from the msg fields
@@ -314,13 +330,30 @@ func (msg MsgEthereumTx) AsTransaction() *ethtypes.Transaction {
 	return ethtypes.NewTx(txData.AsEthereumData())
 }
 
-// AsMessage creates an Ethereum core.Message from the msg fields
+// AsMessage creates an Ethereum core.Message from the msg fields. If the msg is impersonated, ie
+// has non-empty OnBehalf, then From is replaced with it. Otherwise, the from address is derived
+// from the signature.
 func (msg MsgEthereumTx) AsMessage(signer ethtypes.Signer, baseFee *big.Int) (core.Message, error) {
-	return msg.AsTransaction().AsMessage(signer, baseFee)
+	tx := msg.AsTransaction()
+
+	var from common.Address
+	if msg.OnBehalf != "" {
+		// use the grater address if present
+		from = common.HexToAddress(msg.OnBehalf)
+	} else {
+		// derive the sender address from the signature
+		var err error
+		from, err = ethtypes.Sender(signer, tx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return TxAsMessage(tx, baseFee, from), nil
 }
 
-// GetSender extracts the sender address from the signature values using the latest signer for the given chainID.
-func (msg *MsgEthereumTx) GetSender(chainID *big.Int) (common.Address, error) {
+// DeriveSender extracts the sender address from the signature values using the latest signer for the given chainID.
+func (msg *MsgEthereumTx) DeriveSender(chainID *big.Int) (common.Address, error) {
 	signer := ethtypes.LatestSignerForChainID(chainID)
 	from, err := signer.Sender(msg.AsTransaction())
 	if err != nil {
@@ -380,6 +413,32 @@ func (msg *MsgEthereumTx) BuildTx(b client.TxBuilder, evmDenom string) (signing.
 	builder.SetGasLimit(msg.GetGas())
 	tx := builder.GetTx()
 	return tx, nil
+}
+
+// TxAsMessage ia a modified version of ethtypes.AsMessage that allows to set from address explicitly.
+func TxAsMessage(tx *ethtypes.Transaction, baseFee *big.Int, from common.Address) ethtypes.Message {
+	gasPrice := new(big.Int).Set(tx.GasPrice())
+	gasFeeCap := new(big.Int).Set(tx.GasFeeCap())
+	gasTipCap := new(big.Int).Set(tx.GasTipCap())
+
+	// If baseFee provided, set gasPrice to effectiveGasPrice.
+	if baseFee != nil {
+		gasPrice = math.BigMin(gasPrice.Add(gasTipCap, baseFee), gasFeeCap)
+	}
+
+	return ethtypes.NewMessage(
+		from,
+		tx.To(),
+		tx.Nonce(),
+		tx.Value(),
+		tx.Gas(),
+		gasPrice,
+		gasFeeCap,
+		gasTipCap,
+		tx.Data(),
+		tx.AccessList(),
+		false,
+	)
 }
 
 // GetSigners returns the expected signers for a MsgUpdateParams message.

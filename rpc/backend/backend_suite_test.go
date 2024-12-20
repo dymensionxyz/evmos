@@ -144,6 +144,7 @@ func (suite *BackendTestSuite) buildFormattedBlock(
 				uint64(0),
 				baseFee,
 				suite.backend.chainID,
+				nil,
 			)
 			suite.Require().NoError(err)
 			ethRPCTxs = []interface{}{rpcTx}

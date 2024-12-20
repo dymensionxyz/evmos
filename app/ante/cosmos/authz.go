@@ -22,6 +22,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/cosmos/cosmos-sdk/x/authz"
+	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
 // maxNestedMsgs defines a cap for the number of nested messages on a MsgExec message
@@ -76,8 +77,11 @@ func (ald AuthzLimiterDecorator) checkDisabledMsgs(msgs []sdk.Msg, isAuthzInnerM
 				return err
 			}
 
+			// intentionally give access to use MsgEthereumTx in MsgGrant (but not in MsgExec!) to
+			// allow authorization checks in the ETH AuthorizationDecorator AnteHandler
+			msgEthTx := sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{})
 			url := authorization.MsgTypeURL()
-			if ald.isDisabledMsg(url) {
+			if url != msgEthTx && ald.isDisabledMsg(url) {
 				return fmt.Errorf("found disabled msg type: %s", url)
 			}
 		default:

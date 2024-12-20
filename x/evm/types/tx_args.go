@@ -35,6 +35,7 @@ import (
 type TransactionArgs struct {
 	From                 *common.Address `json:"from"`
 	To                   *common.Address `json:"to"`
+	OnBehalf             *common.Address `json:"onBehalf"`
 	Gas                  *hexutil.Uint64 `json:"gas"`
 	GasPrice             *hexutil.Big    `json:"gasPrice"`
 	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
@@ -56,10 +57,11 @@ type TransactionArgs struct {
 // String return the struct in a string format
 func (args *TransactionArgs) String() string {
 	// Todo: There is currently a bug with hexutil.Big when the value its nil, printing would trigger an exception
-	return fmt.Sprintf("TransactionArgs{From:%v, To:%v, Gas:%v,"+
+	return fmt.Sprintf("TransactionArgs{From:%v, To:%v, OnBehalf:%s, Gas:%v,"+
 		" Nonce:%v, Data:%v, Input:%v, AccessList:%v}",
 		args.From,
 		args.To,
+		args.OnBehalf,
 		args.Gas,
 		args.Nonce,
 		args.Data,
@@ -73,7 +75,7 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 	var (
 		chainID, value, gasPrice, maxFeePerGas, maxPriorityFeePerGas sdkmath.Int
 		gas, nonce                                                   uint64
-		from, to                                                     string
+		from, to, onBehalf                                           string
 	)
 
 	// Set sender address or use zero address if none specified.
@@ -159,9 +161,14 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 		from = args.From.Hex()
 	}
 
+	if args.OnBehalf != nil {
+		onBehalf = args.OnBehalf.Hex()
+	}
+
 	msg := MsgEthereumTx{
-		Data: anyData,
-		From: from,
+		Data:     anyData,
+		From:     from,
+		OnBehalf: onBehalf,
 	}
 	msg.Hash = msg.AsTransaction().Hash().Hex()
 	return &msg
@@ -176,7 +183,8 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (e
 	}
 
 	// Set sender address or use zero address if none specified.
-	addr := args.GetFrom()
+	// If OnBehalf is set, use that as the sender.
+	addr := args.GetEffectiveSender()
 
 	// Set default gas & gas price if none were set
 	gas := globalGasCap
@@ -243,8 +251,20 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (e
 	return msg, nil
 }
 
-// GetFrom retrieves the transaction sender address.
-func (args *TransactionArgs) GetFrom() common.Address {
+// GetEffectiveSender retrieves the transaction sender address.
+// If the message has an OnBehalf field, it returns the address from that field.
+func (args *TransactionArgs) GetEffectiveSender() common.Address {
+	if args.OnBehalf != nil {
+		return *args.OnBehalf
+	}
+	if args.From != nil {
+		return *args.From
+	}
+	return common.Address{}
+}
+
+// GetOriginalFrom retrieves the actual sender address ignoring OnBehalf.
+func (args *TransactionArgs) GetOriginalFrom() common.Address {
 	if args.From == nil {
 		return common.Address{}
 	}

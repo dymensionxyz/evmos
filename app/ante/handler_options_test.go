@@ -159,6 +159,25 @@ func (suite *AnteTestSuite) TestValidateHandlerOptions() {
 			false,
 		},
 		{
+			"fail - empty authz keeper",
+			ante.HandlerOptions{
+				Cdc:                suite.app.AppCodec(),
+				AccountKeeper:      suite.app.AccountKeeper,
+				BankKeeper:         suite.app.BankKeeper,
+				ERC20Keeper:        suite.app.Erc20Keeper,
+				DistributionKeeper: suite.app.DistrKeeper,
+				IBCKeeper:          suite.app.IBCKeeper,
+				StakingKeeper:      suite.app.StakingKeeper,
+				FeeMarketKeeper:    suite.app.FeeMarketKeeper,
+				EvmKeeper:          suite.app.EvmKeeper,
+				SigGasConsumer:     ante.SigVerificationGasConsumer,
+				SignModeHandler:    suite.app.GetTxConfig().SignModeHandler(),
+				TxFeeChecker:       ethante.NewDynamicFeeChecker(suite.app.EvmKeeper),
+				AuthzKeeper:        nil,
+			},
+			false,
+		},
+		{
 			"success - default app options",
 			ante.HandlerOptions{
 				Cdc:                    suite.app.AppCodec(),
@@ -176,6 +195,7 @@ func (suite *AnteTestSuite) TestValidateHandlerOptions() {
 				SigGasConsumer:         ante.SigVerificationGasConsumer,
 				MaxTxGasWanted:         40000000,
 				TxFeeChecker:           ethante.NewDynamicFeeChecker(suite.app.EvmKeeper),
+				AuthzKeeper:            suite.app.AuthzKeeper,
 			},
 			true,
 		},

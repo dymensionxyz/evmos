@@ -35,10 +35,12 @@ import (
 
 // SendTransaction sends transaction based on received args using Node's key to sign it
 func (b *Backend) SendTransaction(args evmtypes.TransactionArgs) (common.Hash, error) {
-	// Look up the wallet containing the requested signer
-	_, err := b.clientCtx.Keyring.KeyByAddress(sdk.AccAddress(args.GetFrom().Bytes()))
+	// Look up the wallet containing the requested signer. We need to retrieve the original
+	// sender of the transaction (not the granter) to sign the transaction. We do not know
+	// the granter's private key thus won't find it in the keyring.
+	_, err := b.clientCtx.Keyring.KeyByAddress(sdk.AccAddress(args.GetOriginalFrom().Bytes()))
 	if err != nil {
-		b.logger.Error("failed to find key in keyring", "address", args.GetFrom(), "error", err.Error())
+		b.logger.Error("failed to find key in keyring", "address", args.GetOriginalFrom(), "error", err.Error())
 		return common.Hash{}, fmt.Errorf("failed to find key in the node's keyring; %s; %s", keystore.ErrNoMatch, err.Error())
 	}
 

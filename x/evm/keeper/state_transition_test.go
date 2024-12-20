@@ -567,6 +567,37 @@ func (suite *KeeperTestSuite) TestApplyMessage() {
 	suite.Require().False(res.Failed())
 }
 
+func (suite *KeeperTestSuite) TestApplyMessageOnBehalf() {
+	expectedGasUsed := params.TxGas
+	var msg core.Message
+
+	proposerAddress := suite.ctx.BlockHeader().ProposerAddress
+	config, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposerAddress, big.NewInt(9000))
+	suite.Require().NoError(err)
+
+	signer := ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
+	tracer := suite.app.EvmKeeper.Tracer(suite.ctx, msg, config.ChainConfig)
+	vmdb := suite.StateDB()
+
+	msg, err = newNativeMessageOnBehalf(
+		vmdb.GetNonce(suite.address),
+		suite.address,
+		suite.onBehalf,
+		suite.signer,
+		signer,
+		ethtypes.AccessListTxType,
+		nil,
+		nil,
+	)
+	suite.Require().NoError(err)
+
+	res, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, msg, tracer, true)
+
+	suite.Require().NoError(err)
+	suite.Require().Equal(expectedGasUsed, res.GasUsed)
+	suite.Require().False(res.Failed())
+}
+
 func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 	var (
 		msg             core.Message
@@ -604,6 +635,23 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 			false,
 		},
 		{
+			"messsage on behalf applied ok",
+			func() {
+				msg, err = newNativeMessageOnBehalf(
+					vmdb.GetNonce(suite.address),
+					suite.address,
+					suite.onBehalf,
+					suite.signer,
+					signer,
+					ethtypes.AccessListTxType,
+					nil,
+					nil,
+				)
+				suite.Require().NoError(err)
+			},
+			false,
+		},
+		{
 			"call contract tx with config param EnableCall = false",
 			func() {
 				config.Params.EnableCall = false
@@ -623,9 +671,36 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 			true,
 		},
 		{
+			"call contract tx with config param EnableCall = false",
+			func() {
+				config.Params.EnableCall = false
+				msg, err = newNativeMessageOnBehalf(
+					vmdb.GetNonce(suite.address),
+					suite.address,
+					suite.onBehalf,
+					suite.signer,
+					signer,
+					ethtypes.AccessListTxType,
+					nil,
+					nil,
+				)
+				suite.Require().NoError(err)
+			},
+			true,
+		},
+		{
 			"create contract tx with config param EnableCreate = false",
 			func() {
 				msg, err = suite.createContractGethMsg(vmdb.GetNonce(suite.address), signer, chainCfg, big.NewInt(1))
+				suite.Require().NoError(err)
+				config.Params.EnableCreate = false
+			},
+			true,
+		},
+		{
+			"create contract on behalf tx with config param EnableCreate = false",
+			func() {
+				msg, err = suite.createContractGethMsgOnBehalf(vmdb.GetNonce(suite.address), signer, big.NewInt(1), suite.onBehalf)
 				suite.Require().NoError(err)
 				config.Params.EnableCreate = false
 			},
@@ -668,9 +743,17 @@ func (suite *KeeperTestSuite) createContractGethMsg(nonce uint64, signer ethtype
 	if err != nil {
 		return nil, err
 	}
-
 	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(suite.ctx.BlockHeight()))
 	return ethMsg.AsMessage(msgSigner, nil)
+}
+
+func (suite *KeeperTestSuite) createContractGethMsgOnBehalf(nonce uint64, signer ethtypes.Signer, gasPrice *big.Int, onBehalf common.Address) (core.Message, error) {
+	ethMsg, err := suite.createContractMsgTx(nonce, signer, gasPrice)
+	if err != nil {
+		return nil, err
+	}
+	ethMsg.OnBehalf = onBehalf.Hex()
+	return ethMsg.AsMessage(nil, nil)
 }
 
 func (suite *KeeperTestSuite) createContractMsgTx(nonce uint64, signer ethtypes.Signer, gasPrice *big.Int) (*types.MsgEthereumTx, error) {

@@ -143,18 +143,29 @@ func newNativeMessage(
 	accessList ethtypes.AccessList,
 ) (core.Message, error) {
 	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(blockHeight))
-
 	msg, baseFee, err := newEthMsgTx(nonce, address, krSigner, ethSigner, txType, data, accessList)
 	if err != nil {
 		return nil, err
 	}
+	return msg.AsMessage(msgSigner, baseFee)
+}
 
-	m, err := msg.AsMessage(msgSigner, baseFee)
+func newNativeMessageOnBehalf(
+	nonce uint64,
+	from common.Address,
+	onBehalf common.Address,
+	krSigner keyring.Signer,
+	ethSigner ethtypes.Signer,
+	txType byte,
+	data []byte,
+	accessList ethtypes.AccessList,
+) (core.Message, error) {
+	msg, baseFee, err := newEthMsgTx(nonce, from, krSigner, ethSigner, txType, data, accessList)
 	if err != nil {
 		return nil, err
 	}
-
-	return m, nil
+	msg.OnBehalf = onBehalf.Hex()
+	return msg.AsMessage(nil, baseFee)
 }
 
 func BenchmarkApplyTransaction(b *testing.B) {
@@ -176,7 +187,7 @@ func BenchmarkApplyTransaction(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx)
+		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx, suite.address)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -203,7 +214,7 @@ func BenchmarkApplyTransactionWithLegacyTx(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx)
+		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx, suite.address)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -230,7 +241,7 @@ func BenchmarkApplyTransactionWithDynamicFeeTx(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx)
+		resp, err := suite.app.EvmKeeper.ApplyTransaction(suite.ctx, tx, suite.address)
 		b.StopTimer()
 
 		require.NoError(b, err)

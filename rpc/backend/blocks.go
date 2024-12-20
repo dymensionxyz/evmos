@@ -392,6 +392,14 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		tx := ethMsg.AsTransaction()
 		height := uint64(block.Height) //#nosec G701 -- checked for int overflow already
 		index := uint64(txIndex)       //#nosec G701 -- checked for int overflow already
+
+		// check if the transaction is impersonated
+		var onBehalf *common.Address
+		if ethMsg.OnBehalf != "" {
+			addr := common.HexToAddress(ethMsg.OnBehalf)
+			onBehalf = &addr
+		}
+
 		rpcTx, err := rpctypes.NewRPCTransaction(
 			tx,
 			common.BytesToHash(block.Hash()),
@@ -399,6 +407,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 			index,
 			baseFee,
 			b.chainID,
+			onBehalf,
 		)
 		if err != nil {
 			b.logger.Debug("NewTransactionFromData for receipt failed", "hash", tx.Hash().Hex(), "error", err.Error())

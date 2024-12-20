@@ -46,6 +46,7 @@ type KeeperTestSuite struct {
 	app         *app.Evmos
 	queryClient evmtypes.QueryClient
 	address     common.Address
+	onBehalf    common.Address
 	consAddress sdk.ConsAddress
 
 	// for generate test tx
@@ -100,6 +101,7 @@ func (suite *KeeperTestSuite) SetupAppWithT(checkTx bool, t require.TestingT) {
 	}
 	suite.address = common.BytesToAddress(priv.PubKey().Address().Bytes())
 	suite.signer = utiltx.NewSigner(priv)
+	suite.onBehalf = utiltx.GenerateAddress()
 
 	// consensus key
 	priv, err = ethsecp256k1.GenerateKey()

@@ -247,7 +247,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	}
 
 	// ApplyMessageWithConfig expect correct nonce set in msg
-	nonce := k.GetNonce(ctx, args.GetFrom())
+	nonce := k.GetNonce(ctx, args.GetEffectiveSender())
 	args.Nonce = (*hexutil.Uint64)(&nonce)
 
 	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
@@ -322,7 +322,7 @@ func (k Keeper) EstimateGas(c context.Context, req *types.EthCallRequest) (*type
 	}
 
 	// ApplyMessageWithConfig expect correct nonce set in msg
-	nonce := k.GetNonce(ctx, args.GetFrom())
+	nonce := k.GetNonce(ctx, args.GetEffectiveSender())
 	args.Nonce = (*hexutil.Uint64)(&nonce)
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
@@ -426,22 +426,24 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
 	for i, tx := range req.Predecessors {
-		ethTx := tx.AsTransaction()
-		msg, err := ethTx.AsMessage(signer, cfg.BaseFee)
+		coreMsg, err := tx.AsMessage(signer, cfg.BaseFee)
 		if err != nil {
 			continue
 		}
-		txConfig.TxHash = ethTx.Hash()
+		txConfig.TxHash = tx.AsTransaction().Hash()
 		txConfig.TxIndex = uint(i)
-		rsp, err := k.ApplyMessageWithConfig(ctx, msg, types.NewNoOpTracer(), true, cfg, txConfig)
+		rsp, err := k.ApplyMessageWithConfig(ctx, coreMsg, types.NewNoOpTracer(), true, cfg, txConfig)
 		if err != nil {
 			continue
 		}
 		txConfig.LogIndex += uint(len(rsp.Logs))
 	}
 
-	tx := req.Msg.AsTransaction()
-	txConfig.TxHash = tx.Hash()
+	coreMsg, err := req.Msg.AsMessage(signer, cfg.BaseFee)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	txConfig.TxHash = req.Msg.AsTransaction().Hash()
 	if len(req.Predecessors) > 0 {
 		txConfig.TxIndex++
 	}
@@ -452,7 +454,7 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		_ = json.Unmarshal([]byte(req.TraceConfig.TracerJsonConfig), &tracerConfig)
 	}
 
-	result, _, err := k.traceTx(ctx, cfg, txConfig, signer, tx, req.TraceConfig, false, tracerConfig)
+	result, _, err := k.traceTx(ctx, cfg, txConfig, coreMsg, req.TraceConfig, false, tracerConfig)
 	if err != nil {
 		// error will be returned with detail status from traceTx
 		return nil, err
@@ -507,10 +509,15 @@ func (k Keeper) TraceBlock(c context.Context, req *types.QueryTraceBlockRequest)
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
 	for i, tx := range req.Txs {
 		result := types.TxTraceResult{}
-		ethTx := tx.AsTransaction()
-		txConfig.TxHash = ethTx.Hash()
+		txConfig.TxHash = tx.AsTransaction().Hash()
+		coreMsg, err := tx.AsMessage(signer, cfg.BaseFee)
+		if err != nil {
+			result.Error = status.Error(codes.Internal, err.Error()).Error()
+			results = append(results, &result)
+			continue
+		}
 		txConfig.TxIndex = uint(i)
-		traceResult, logIndex, err := k.traceTx(ctx, cfg, txConfig, signer, ethTx, req.TraceConfig, true, nil)
+		traceResult, logIndex, err := k.traceTx(ctx, cfg, txConfig, coreMsg, req.TraceConfig, true, nil)
 		if err != nil {
 			result.Error = err.Error()
 		} else {
@@ -535,8 +542,7 @@ func (k *Keeper) traceTx(
 	ctx sdk.Context,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
-	signer ethtypes.Signer,
-	tx *ethtypes.Transaction,
+	coreMsg core.Message,
 	traceConfig *types.TraceConfig,
 	commitMessage bool,
 	tracerJSONConfig json.RawMessage,
@@ -548,10 +554,6 @@ func (k *Keeper) traceTx(
 		err       error
 		timeout   = defaultTraceTimeout
 	)
-	msg, err := tx.AsMessage(signer, cfg.BaseFee)
-	if err != nil {
-		return nil, 0, status.Error(codes.Internal, err.Error())
-	}
 
 	if traceConfig == nil {
 		traceConfig = &types.TraceConfig{}
@@ -603,7 +605,7 @@ func (k *Keeper) traceTx(
 		}
 	}()
 
-	res, err := k.ApplyMessageWithConfig(ctx, msg, tracer, commitMessage, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(ctx, coreMsg, tracer, commitMessage, cfg, txConfig)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())
 	}

@@ -78,8 +78,9 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 			return ctx, errorsmod.Wrapf(err, "failed to unpack tx data any for tx %d", i)
 		}
 
-		// sender address should be in the tx cache from the previous AnteHandle call
-		from := msgEthTx.GetFrom()
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
+		from := msgEthTx.GetEffectiveSender()
 		if from.Empty() {
 			return ctx, errorsmod.Wrap(errortypes.ErrInvalidAddress, "from address cannot be empty")
 		}
@@ -188,7 +189,10 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 		if !ok {
 			return ctx, errorsmod.Wrapf(errortypes.ErrUnknownRequest, "invalid message type %T, expected %T", msg, (*evmtypes.MsgEthereumTx)(nil))
 		}
-		from := msgEthTx.GetFrom()
+
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
+		from := msgEthTx.GetEffectiveSender()
 
 		txData, err := evmtypes.UnpackTxData(msgEthTx.Data)
 		if err != nil {
@@ -301,7 +305,8 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		}
 
 		baseFee := ctd.evmKeeper.GetBaseFee(ctx, ethCfg)
-
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
 		coreMsg, err := msgEthTx.AsMessage(signer, baseFee)
 		if err != nil {
 			return ctx, errorsmod.Wrapf(
@@ -366,7 +371,8 @@ func NewEthIncrementSenderSequenceDecorator(ak evmtypes.AccountKeeper) EthIncrem
 
 // AnteHandle handles incrementing the sequence of the signer (i.e. sender). If the transaction is a
 // contract creation, the nonce will be incremented during the transaction execution and not within
-// this AnteHandler decorator.
+// this AnteHandler decorator. If the transaction is executed on behalf, increase the sequence ONLY
+// for granter. The tx must have a granter's nonce.
 func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	for _, msg := range tx.GetMsgs() {
 		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
@@ -379,12 +385,14 @@ func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx s
 			return ctx, errorsmod.Wrap(err, "failed to unpack tx data")
 		}
 
-		// increase sequence of sender
-		acc := issd.ak.GetAccount(ctx, msgEthTx.GetFrom())
+		// Increase sequence of the sender.
+		// Sender address should be in the tx cache from the previous AnteHandle call.
+		// From may be either actual from address or the granter address.
+		acc := issd.ak.GetAccount(ctx, msgEthTx.GetEffectiveSender())
 		if acc == nil {
 			return ctx, errorsmod.Wrapf(
 				errortypes.ErrUnknownAddress,
-				"account %s is nil", common.BytesToAddress(msgEthTx.GetFrom().Bytes()),
+				"account %s is nil", common.BytesToAddress(msgEthTx.GetEffectiveSender().Bytes()),
 			)
 		}
 		nonce := acc.GetSequence()

@@ -1102,6 +1102,7 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint() {
 						uint64(0),
 						tc.baseFee,
 						suite.backend.chainID,
+						nil,
 					)
 					suite.Require().NoError(err)
 					ethRPCTxs = []interface{}{rpcTx}
