@@ -40,7 +40,7 @@ func (b *Backend) SendTransaction(args evmtypes.TransactionArgs) (common.Hash, e
 	// the granter's private key thus won't find it in the keyring.
 	_, err := b.clientCtx.Keyring.KeyByAddress(sdk.AccAddress(args.GetOriginalFrom().Bytes()))
 	if err != nil {
-		b.logger.Error("failed to find key in keyring", "address", args.GetEffectiveSender(), "error", err.Error())
+		b.logger.Error("failed to find key in keyring", "address", args.GetOriginalFrom(), "error", err.Error())
 		return common.Hash{}, fmt.Errorf("failed to find key in the node's keyring; %s; %s", keystore.ErrNoMatch, err.Error())
 	}
 
