@@ -21,6 +21,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/evmos/evmos/v12/x/erc20/types"
 )
 
@@ -37,9 +38,9 @@ func (k Keeper) RegisterCoin(
 		)
 	}
 	// Check if denomination is already registered
-	if k.IsDenomRegistered(ctx, coinMetadata.Name) {
+	if k.IsDenomRegistered(ctx, coinMetadata.Base) {
 		return nil, errorsmod.Wrapf(
-			types.ErrTokenPairAlreadyExists, "coin denomination already registered: %s", coinMetadata.Name,
+			types.ErrTokenPairAlreadyExists, "coin denomination already registered: %s", coinMetadata.Base,
 		)
 	}
 
