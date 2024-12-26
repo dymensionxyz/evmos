@@ -122,7 +122,7 @@ func (suite KeeperTestSuite) TestRegisterCoin() { //nolint:govet // we can copy 
 				Exponent: defaultExponent,
 			},
 		},
-		Name:    cosmosTokenBase,
+		Name:    erc20Name,
 		Symbol:  erc20Symbol,
 		Display: cosmosTokenDisplay,
 	}
@@ -168,7 +168,7 @@ func (suite KeeperTestSuite) TestRegisterCoin() { //nolint:govet // we can copy 
 							Exponent: uint32(18),
 						},
 					},
-					Name:    erc20Name,
+					Name:    "different_name",
 					Symbol:  erc20Symbol,
 					Display: cosmosTokenDisplay,
 				}
