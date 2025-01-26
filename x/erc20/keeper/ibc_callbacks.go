@@ -122,6 +122,8 @@ func (k Keeper) OnRecvPacket(
 
 	// NOTE: we don't use ValidateBasic the msg since we've already validated
 	// the ICS20 packet data
+	k.Logger(ctx).Info("I'm here")
+	println("I'm also here")
 
 	// Use MsgConvertCoin to convert the Cosmos Coin to an ERC20
 	if _, err = k.ConvertCoin(sdk.WrapSDKContext(ctx), msg); err != nil {
