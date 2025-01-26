@@ -90,10 +90,10 @@ func (k Keeper) OnRecvPacket(
 		data.Denom, data.Amount,
 	)
 
-	// check if the coin is a native staking token
-	bondDenom := k.stakingKeeper.BondDenom(ctx)
-	if coin.Denom == bondDenom {
-		// no-op, received coin is the staking denomination
+	// check if the coin is the EVM native token
+	nativeDenom := k.evmKeeper.GetParams(ctx).EvmDenom
+	if coin.Denom == nativeDenom {
+		// no-op, received coin is the EVM nativetoken
 		return ack
 	}
 
