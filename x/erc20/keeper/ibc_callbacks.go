@@ -99,6 +99,10 @@ func (k Keeper) OnRecvPacket(
 
 	pairID := k.GetTokenPairID(ctx, coin.Denom)
 	if len(pairID) == 0 {
+		k.Logger(ctx).Error(
+			"token pair not found",
+			"coin", coin.Denom,
+		)
 		err = errorsmod.Wrapf(types.ErrTokenPairNotFound, "coin denom: %s", coin.Denom)
 		return channeltypes.NewErrorAcknowledgement(err)
 	}
@@ -121,6 +125,11 @@ func (k Keeper) OnRecvPacket(
 
 	// Use MsgConvertCoin to convert the Cosmos Coin to an ERC20
 	if _, err = k.ConvertCoin(sdk.WrapSDKContext(ctx), msg); err != nil {
+		k.Logger(ctx).Error(
+			"failed to convert coin to erc20",
+			"coin", balance.String(),
+			"error", err.Error(),
+		)
 		return channeltypes.NewErrorAcknowledgement(err)
 	}
 
