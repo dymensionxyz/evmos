@@ -78,7 +78,7 @@ func (k Keeper) OnRecvPacket(
 
 	senderAcc := k.accountKeeper.GetAccount(ctx, sender)
 
-	// return acknoledgement without conversion if sender is a module account
+	// return acknowledgement without conversion if sender is a module account
 	if types.IsModuleAccount(senderAcc) {
 		return ack
 	}
@@ -91,9 +91,9 @@ func (k Keeper) OnRecvPacket(
 	)
 
 	// check if the coin is a native staking token
-	bondDenom := k.stakingKeeper.BondDenom(ctx)
-	if coin.Denom == bondDenom {
-		// no-op, received coin is the staking denomination
+	evmDenom := k.evmKeeper.GetParams(ctx).EvmDenom
+	if coin.Denom == evmDenom {
+		// no-op, received coin is the evm native denom
 		return ack
 	}
 
@@ -187,9 +187,9 @@ func (k Keeper) ConvertCoinToERC20FromPacket(ctx sdk.Context, data transfertypes
 	coin := ibc.GetSentCoin(data.Denom, data.Amount)
 
 	// check if the coin is a native staking token
-	bondDenom := k.stakingKeeper.BondDenom(ctx)
-	if coin.Denom == bondDenom {
-		// no-op, received coin is the staking denomination
+	evmDenom := k.evmKeeper.GetParams(ctx).EvmDenom
+	if coin.Denom == evmDenom {
+		// no-op, received coin is the evm native denom
 		return nil
 	}
 
