@@ -70,6 +70,8 @@ func (k Keeper) OnRecvPacket(
 		return ack
 	}
 
+	k.Logger(ctx).Info("erc20 conversion enabled; on recv packet")
+
 	// Get addresses in `evmos1` and the original bech32 format
 	sender, recipient, err := ibc.GetTransferSenderRecipientFromData(data)
 	if err != nil {
@@ -80,6 +82,7 @@ func (k Keeper) OnRecvPacket(
 
 	// return acknowledgement without conversion if sender is a module account
 	if types.IsModuleAccount(senderAcc) {
+		k.Logger(ctx).Info("erc20 conversion disabled; sender is a module account")
 		return ack
 	}
 
@@ -94,6 +97,7 @@ func (k Keeper) OnRecvPacket(
 	evmDenom := k.evmKeeper.GetParams(ctx).EvmDenom
 	if coin.Denom == evmDenom {
 		// no-op, received coin is the evm native denom
+		k.Logger(ctx).Info("erc20 conversion disabled; received coin is the evm native denom", "coin", coin)
 		return ack
 	}
 
@@ -106,6 +110,7 @@ func (k Keeper) OnRecvPacket(
 	pair, _ := k.GetTokenPair(ctx, pairID)
 	if !pair.Enabled {
 		// no-op: continue with the rest of the stack without conversion
+		k.Logger(ctx).Info("erc20 conversion disabled; token pair is not enabled", "pair", pair, "pairID", pairID)
 		return ack
 	}
 
@@ -118,6 +123,8 @@ func (k Keeper) OnRecvPacket(
 
 	// NOTE: we don't use ValidateBasic the msg since we've already validated
 	// the ICS20 packet data
+
+	k.Logger(ctx).Info("erc20 conversion enabled; on recv packet", "msg", msg)
 
 	// Use MsgConvertCoin to convert the Cosmos Coin to an ERC20
 	if _, err = k.ConvertCoin(sdk.WrapSDKContext(ctx), msg); err != nil {
