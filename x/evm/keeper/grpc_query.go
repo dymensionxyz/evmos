@@ -318,7 +318,7 @@ func (k Keeper) EstimateGas(c context.Context, req *types.EthCallRequest) (*type
 	gasCap = hi
 	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, req.ProposerAddress), chainID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to load evm config")
+		return nil, status.Errorf(codes.Internal, "failed to load evm config: %s", err.Error())
 	}
 
 	// ApplyMessageWithConfig expect correct nonce set in msg
@@ -428,12 +428,17 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 	for i, tx := range req.Predecessors {
 		coreMsg, err := tx.AsMessage(signer, cfg.BaseFee)
 		if err != nil {
+			// Log the error but continue with the next transaction
+			// We don't want to fail the entire trace just because one predecessor failed
+			ctx.Logger().Debug("failed to create message from predecessor transaction", "error", err.Error(), "tx_index", i)
 			continue
 		}
 		txConfig.TxHash = tx.AsTransaction().Hash()
 		txConfig.TxIndex = uint(i)
 		rsp, err := k.ApplyMessageWithConfig(ctx, coreMsg, types.NewNoOpTracer(), true, cfg, txConfig)
 		if err != nil {
+			// Log the error but continue with the next transaction
+			ctx.Logger().Debug("failed to apply predecessor message", "error", err.Error(), "tx_index", i)
 			continue
 		}
 		txConfig.LogIndex += uint(len(rsp.Logs))
@@ -450,8 +455,10 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 
 	var tracerConfig json.RawMessage
 	if req.TraceConfig != nil && req.TraceConfig.TracerJsonConfig != "" {
-		// ignore error. default to no traceConfig
-		_ = json.Unmarshal([]byte(req.TraceConfig.TracerJsonConfig), &tracerConfig)
+		if err := json.Unmarshal([]byte(req.TraceConfig.TracerJsonConfig), &tracerConfig); err != nil {
+			ctx.Logger().Debug("failed to unmarshal tracer config", "error", err.Error())
+			// Continue with empty tracerConfig on error
+		}
 	}
 
 	result, _, err := k.traceTx(ctx, cfg, txConfig, coreMsg, req.TraceConfig, false, tracerConfig)
@@ -500,7 +507,7 @@ func (k Keeper) TraceBlock(c context.Context, req *types.QueryTraceBlockRequest)
 
 	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, req.ProposerAddress), chainID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to load evm config")
+		return nil, status.Errorf(codes.Internal, "failed to load evm config: %s", err.Error())
 	}
 	signer := ethtypes.MakeSigner(cfg.ChainConfig, big.NewInt(ctx.BlockHeight()))
 	txsLength := len(req.Txs)
