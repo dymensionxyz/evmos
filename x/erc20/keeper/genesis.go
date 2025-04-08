@@ -14,23 +14,18 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
 
-package erc20
+package keeper
 
 import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
-
-	"github.com/evmos/evmos/v12/x/erc20/keeper"
 	"github.com/evmos/evmos/v12/x/erc20/types"
 )
 
 // InitGenesis import module genesis
-func InitGenesis(
+func (k Keeper) InitGenesis(
 	ctx sdk.Context,
-	k keeper.Keeper,
-	accountKeeper authkeeper.AccountKeeper,
 	data types.GenesisState,
 ) {
 	err := k.SetParams(ctx, data.Params)
@@ -39,21 +34,32 @@ func InitGenesis(
 	}
 
 	// ensure erc20 module account is set on genesis
-	if acc := accountKeeper.GetModuleAccount(ctx, types.ModuleName); acc == nil {
+	if acc := k.accountKeeper.GetModuleAccount(ctx, types.ModuleName); acc == nil {
 		// NOTE: shouldn't occur
 		panic("the erc20 module account has not been set")
 	}
 
 	for _, pair := range data.TokenPairs {
 		id := pair.GetID()
-		k.SetTokenPair(ctx, pair)
-		k.SetDenomMap(ctx, pair.Denom, id)
-		k.SetERC20Map(ctx, pair.GetERC20Contract(), id)
+		if pair.Erc20Address == types.DeployedContractOnGenesisAddr {
+			metadata, found := k.bankKeeper.GetDenomMetaData(ctx, pair.Denom)
+			if !found {
+				panic(fmt.Errorf("metadata not found for denom %s", pair.Denom))
+			}
+			_, err := k.RegisterCoin(ctx, metadata)
+			if err != nil {
+				panic(fmt.Errorf("failed to register coin: %s", err))
+			}
+		} else {
+			k.SetTokenPair(ctx, pair)
+			k.SetDenomMap(ctx, pair.Denom, id)
+			k.SetERC20Map(ctx, pair.GetERC20Contract(), id)
+		}
 	}
 }
 
 // ExportGenesis export module status
-func ExportGenesis(ctx sdk.Context, k keeper.Keeper) *types.GenesisState {
+func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 	return &types.GenesisState{
 		Params:     k.GetParams(ctx),
 		TokenPairs: k.GetTokenPairs(ctx),

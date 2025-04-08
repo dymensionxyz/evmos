@@ -23,6 +23,9 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
+// Define a constant hex address for the ERC20 token
+const DeployedContractOnGenesisAddr = "0x0000000000000000000000000000000000000001"
+
 // NewTokenPair returns an instance of TokenPair
 func NewTokenPair(erc20Address common.Address, denom string, contractOwner Owner) TokenPair {
 	return TokenPair{
