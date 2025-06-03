@@ -56,6 +56,12 @@ type MockBankKeeper struct {
 	mock.Mock
 }
 
+// SpendableCoins implements types.BankKeeper.
+func (b *MockBankKeeper) SpendableCoins(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins {
+	args := b.Called(mock.Anything, mock.Anything)
+	return args.Get(0).(sdk.Coins)
+}
+
 func (b *MockBankKeeper) SendCoinsFromModuleToAccount(_ sdk.Context, _ string, _ sdk.AccAddress, _ sdk.Coins) error {
 	args := b.Called(mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	return args.Error(0)
