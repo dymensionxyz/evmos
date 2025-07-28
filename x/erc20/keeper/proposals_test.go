@@ -319,13 +319,13 @@ func (suite KeeperTestSuite) TestRegisterERC20() { //nolint:govet // we can copy
 				suite.Require().True(found)
 				suite.Require().Equal(coinName, metadata.Base)
 				suite.Require().Equal(coinName, metadata.Name)
-				suite.Require().Equal(types.SanitizeERC20Name(erc20Name), metadata.Display)
+				suite.Require().Equal(erc20Symbol, metadata.Display)
 				suite.Require().Equal(erc20Symbol, metadata.Symbol)
 				// Denom units
 				suite.Require().Equal(len(metadata.DenomUnits), 2)
 				suite.Require().Equal(coinName, metadata.DenomUnits[0].Denom)
 				suite.Require().Equal(zeroExponent, metadata.DenomUnits[0].Exponent)
-				suite.Require().Equal(types.SanitizeERC20Name(erc20Name), metadata.DenomUnits[1].Denom)
+				suite.Require().Equal(erc20Symbol, metadata.DenomUnits[1].Denom)
 				// Custom exponent at contract creation matches coin with token
 				suite.Require().Equal(metadata.DenomUnits[1].Exponent, uint32(cosmosDecimals))
 			} else {

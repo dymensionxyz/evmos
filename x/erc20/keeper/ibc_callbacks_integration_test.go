@@ -211,7 +211,7 @@ var _ = Describe("Convert receiving IBC to Erc20", Ordered, func() {
 			senderAcc = sdk.MustAccAddressFromBech32(sender)
 
 			// Register ERC20 pair
-			addr, err := s.DeployContractToChain("testcoin", "tt", 18)
+			addr, err := s.DeployContractToChain("testcoin", "ttt", 18)
 			s.Require().NoError(err)
 			pair, err = s.app.Erc20Keeper.RegisterERC20(s.EvmosChain.GetContext(), addr)
 			s.Require().NoError(err)
@@ -400,7 +400,7 @@ var _ = Describe("Convert outgoing ERC20 to IBC", Ordered, func() {
 			senderAcc = sdk.MustAccAddressFromBech32(sender)
 
 			// Register ERC20 pair
-			addr, err := s.DeployContractToChain("testcoin", "tt", 18)
+			addr, err := s.DeployContractToChain("testcoin", "ttt", 18)
 			s.Require().NoError(err)
 			pair, err = s.app.Erc20Keeper.RegisterERC20(s.EvmosChain.GetContext(), addr)
 			s.Require().NoError(err)
@@ -472,7 +472,7 @@ var _ = Describe("Convert outgoing ERC20 to IBC", Ordered, func() {
 			senderAcc = sdk.MustAccAddressFromBech32(sender)
 
 			// Register ERC20 pair
-			addr, err := s.DeployContractToChain("testcoin", "tt", 18)
+			addr, err := s.DeployContractToChain("testcoin", "ttt", 18)
 			s.Require().NoError(err)
 			pair, err = s.app.Erc20Keeper.RegisterERC20(s.EvmosChain.GetContext(), addr)
 			s.Require().NoError(err)
