@@ -4,7 +4,9 @@ import (
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/evmos/evmos/v12/contracts"
 	"github.com/evmos/evmos/v12/x/erc20/types"
 )
 
@@ -234,6 +236,19 @@ func (suite *KeeperTestSuite) TestAutoConvertBankToERC20OnGenesis() {
 	suite.Require().True(found, "Token pair should be registered")
 	suite.Require().NotEqual(types.DeployedContractOnGenesisAddr, registeredPair.Erc20Address, "Contract should be deployed")
 
-	// Verify ERC20 balances (this would require setting up proper EVM context and calling BalanceOf)
-	// For now, we just verify that the conversion process completed without error
+	// Verify ERC20 balances using BalanceOf
+	erc20 := contracts.ERC20MinterBurnerDecimalsContract.ABI
+	contract := registeredPair.GetERC20Contract()
+
+	// Check ERC20 balance for account1
+	account1EthAddr := common.BytesToAddress(account1)
+	balance1ERC20 := suite.app.Erc20Keeper.BalanceOf(suite.ctx, erc20, contract, account1EthAddr)
+	suite.Require().NotNil(balance1ERC20, "Account1 ERC20 balance should not be nil")
+	suite.Require().Equal(testAmount, balance1ERC20.Int64(), "Account1 should have correct ERC20 balance")
+
+	// Check ERC20 balance for account2
+	account2EthAddr := common.BytesToAddress(account2)
+	balance2ERC20 := suite.app.Erc20Keeper.BalanceOf(suite.ctx, erc20, contract, account2EthAddr)
+	suite.Require().NotNil(balance2ERC20, "Account2 ERC20 balance should not be nil")
+	suite.Require().Equal(testAmount*2, balance2ERC20.Int64(), "Account2 should have correct ERC20 balance")
 }
