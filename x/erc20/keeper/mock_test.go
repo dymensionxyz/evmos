@@ -110,3 +110,6 @@ func (b *MockBankKeeper) GetBalance(_ sdk.Context, _ sdk.AccAddress, _ string) s
 	args := b.Called(mock.Anything, mock.Anything)
 	return args.Get(0).(sdk.Coin)
 }
+
+func (b *MockBankKeeper) IterateAllBalances(_ sdk.Context, _ func(address sdk.AccAddress, coin sdk.Coin) (stop bool)) {
+}
