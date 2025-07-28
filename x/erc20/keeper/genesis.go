@@ -31,18 +31,15 @@ func (k Keeper) convertAccountBankToERC20(
 	account sdk.AccAddress,
 	balance sdk.Coin,
 ) error {
-	// Convert account address to ethereum address
 	receiver := common.BytesToAddress(account)
 
-	// Create a MsgConvertCoin to use with the existing conversion function
 	msg := &types.MsgConvertCoin{
 		Coin:     balance,
 		Receiver: receiver.Hex(),
 		Sender:   account.String(),
 	}
 
-	// Use the existing, well-tested conversion logic
-	_, err := k.convertCoinNativeERC20(ctx, pair, msg, receiver, account)
+	_, err := k.convertCoinNativeCoin(ctx, pair, msg, receiver, account)
 	if err != nil {
 		return fmt.Errorf("failed to convert bank tokens to ERC20 for account %s: %w", account.String(), err)
 	}
