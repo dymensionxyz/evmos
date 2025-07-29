@@ -188,14 +188,14 @@ func (suite *KeeperTestSuite) TestAutoConvertBankToERC20OnGenesis() {
 	coins1 := sdk.NewCoins(sdk.NewCoin(testDenom, sdk.NewInt(testAmount)))
 	coins2 := sdk.NewCoins(sdk.NewCoin(testDenom, sdk.NewInt(testAmount*2)))
 
-	err := suite.app.BankKeeper.MintCoins(suite.ctx, "erc20", coins1)
+	err := suite.app.BankKeeper.MintCoins(suite.ctx, types.ModuleName, coins1)
 	suite.Require().NoError(err)
-	err = suite.app.BankKeeper.SendCoinsFromModuleToAccount(suite.ctx, "erc20", account1, coins1)
+	err = suite.app.BankKeeper.SendCoinsFromModuleToAccount(suite.ctx, types.ModuleName, account1, coins1)
 	suite.Require().NoError(err)
 
-	err = suite.app.BankKeeper.MintCoins(suite.ctx, "erc20", coins2)
+	err = suite.app.BankKeeper.MintCoins(suite.ctx, types.ModuleName, coins2)
 	suite.Require().NoError(err)
-	err = suite.app.BankKeeper.SendCoinsFromModuleToAccount(suite.ctx, "erc20", account2, coins2)
+	err = suite.app.BankKeeper.SendCoinsFromModuleToAccount(suite.ctx, types.ModuleName, account2, coins2)
 	suite.Require().NoError(err)
 
 	// Verify initial bank balances
