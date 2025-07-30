@@ -59,12 +59,13 @@ func (k Keeper) convertAccountBankToERC20(
 func (k Keeper) autoConvertBankToERC20OnGenesis(ctx sdk.Context, pair types.TokenPair) error {
 
 	k.bankKeeper.IterateAllBalances(ctx, func(account sdk.AccAddress, coin sdk.Coin) bool {
-		// Skip module accounts to avoid converting module balances
-		if k.bankKeeper.BlockedAddr(account) {
+		// Skip non-matching denoms
+		if coin.Denom != pair.Denom {
 			return false // continue iteration
 		}
 
-		if coin.Denom != pair.Denom {
+		// Skip module accounts to avoid converting module balances
+		if acc := k.accountKeeper.GetAccount(ctx, account); types.IsModuleAccount(acc) {
 			return false // continue iteration
 		}
 
