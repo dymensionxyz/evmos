@@ -89,7 +89,7 @@ func (k Keeper) Transfer(goCtx context.Context, msg *types.MsgTransfer) (*types.
 	msg.Token.Denom = pair.Denom
 
 	// if the user has enough balance of the Cosmos representation, then we don't need to Convert
-	balance := k.bankKeeper.GetBalance(ctx, sender, pair.Denom)
+	_, balance := k.bankKeeper.SpendableCoins(ctx, sender).Find(pair.Denom)
 	if balance.Amount.GTE(msg.Token.Amount) {
 
 		defer func() {
