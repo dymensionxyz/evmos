@@ -17,6 +17,8 @@
 package keeper
 
 import (
+	"errors"
+
 	errorsmod "cosmossdk.io/errors"
 	"github.com/armon/go-metrics"
 	storetypes "github.com/cosmos/cosmos-sdk/store/types"
@@ -111,7 +113,10 @@ func (k Keeper) OnRecvPacket(
 
 	// Instead of converting just the received coins, convert the whole user balance
 	// which includes the received coins.
-	_, balance := k.bankKeeper.SpendableCoins(ctx, recipient).Find(coin.Denom)
+	ok, balance := k.bankKeeper.SpendableCoins(ctx, recipient).Find(coin.Denom)
+	if !ok {
+		return channeltypes.NewErrorAcknowledgement(errors.New("failed to find balance to convert"))
+	}
 
 	// Build MsgConvertCoin, from recipient to recipient since IBC transfer already occurred
 	msg := types.NewMsgConvertCoin(balance, common.BytesToAddress(recipient.Bytes()), recipient)

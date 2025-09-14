@@ -89,8 +89,8 @@ func (k Keeper) Transfer(goCtx context.Context, msg *types.MsgTransfer) (*types.
 	msg.Token.Denom = pair.Denom
 
 	// if the user has enough balance of the Cosmos representation, then we don't need to Convert
-	_, balance := k.bankKeeper.SpendableCoins(ctx, sender).Find(pair.Denom)
-	if balance.Amount.GTE(msg.Token.Amount) {
+	balance := k.bankKeeper.SpendableCoins(ctx, sender).AmountOf(pair.Denom)
+	if balance.GTE(msg.Token.Amount) {
 
 		defer func() {
 			telemetry.IncrCounterWithLabels(
@@ -106,7 +106,7 @@ func (k Keeper) Transfer(goCtx context.Context, msg *types.MsgTransfer) (*types.
 	}
 
 	// only convert the remaining difference
-	difference := msg.Token.Amount.Sub(balance.Amount)
+	difference := msg.Token.Amount.Sub(balance)
 
 	msgConvertERC20 := erc20types.NewMsgConvertERC20(
 		difference,
