@@ -295,8 +295,27 @@ func legacyTraverseFields(
 
 		ethTyp := typToEth(fieldType)
 
+		// Special-case bytes fields (i.e., collections of uint8) to be strings,
+		// since Cosmos JSON encodes []byte as base64 strings. This avoids producing
+		// a uint8[] EIP-712 type that won't match provided data.
+		if isCollection && fieldType.Kind() == reflect.Uint8 {
+			if prefix == typeDefPrefix {
+				typeMap[rootType] = append(typeMap[rootType], apitypes.Type{
+					Name: fieldName,
+					Type: "string",
+				})
+			} else {
+				typeDef := sanitizeTypedef(prefix)
+				typeMap[typeDef] = append(typeMap[typeDef], apitypes.Type{
+					Name: fieldName,
+					Type: "string",
+				})
+			}
+			continue
+		}
+
 		if len(ethTyp) > 0 {
-			// Support array of uint64
+			// Support array of primitives
 			if isCollection && fieldType.Kind() != reflect.Slice && fieldType.Kind() != reflect.Array {
 				ethTyp += "[]"
 			}
@@ -382,7 +401,7 @@ var (
 	addressType   = reflect.TypeOf(common.Address{})
 	bigIntType    = reflect.TypeOf(big.Int{})
 	cosmIntType   = reflect.TypeOf(sdkmath.Int{})
-	cosmDecType   = reflect.TypeOf(sdk.Dec{})
+	cosmDecType   = reflect.TypeOf(sdkmath.LegacyDec{})
 	timeType      = reflect.TypeOf(time.Time{})
 	cosmosAnyType = reflect.TypeOf(&codectypes.Any{})
 	edType        = reflect.TypeOf(ed25519.PubKey{})
@@ -419,11 +438,19 @@ func typToEth(typ reflect.Type) string {
 	case reflect.Uint64:
 		return "uint64"
 	case reflect.Slice:
+		// Special-case []byte -> treat as string, since JSON encoding uses base64 strings
+		if typ.Elem().Kind() == reflect.Uint8 {
+			return str
+		}
 		ethName := typToEth(typ.Elem())
 		if len(ethName) > 0 {
 			return ethName + "[]"
 		}
 	case reflect.Array:
+		// Special-case [N]byte -> treat as string, since JSON encoding uses base64 strings
+		if typ.Elem().Kind() == reflect.Uint8 {
+			return str
+		}
 		ethName := typToEth(typ.Elem())
 		if len(ethName) > 0 {
 			return ethName + "[]"
