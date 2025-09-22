@@ -152,15 +152,14 @@ func (k Keeper) CreateCoinMetadata(
 
 	// only append metadata if decimals > 0, otherwise validation fails
 	if erc20Data.Decimals > 0 {
-		nameSanitized := types.SanitizeERC20Name(erc20Data.Symbol)
 		metadata.DenomUnits = append(
 			metadata.DenomUnits,
 			&banktypes.DenomUnit{
-				Denom:    nameSanitized,
+				Denom:    erc20Data.Symbol,
 				Exponent: uint32(erc20Data.Decimals),
 			},
 		)
-		metadata.Display = nameSanitized
+		metadata.Display = erc20Data.Symbol
 	}
 
 	if err := metadata.Validate(); err != nil {

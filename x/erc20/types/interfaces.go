@@ -54,6 +54,9 @@ type BankKeeper interface {
 	HasSupply(ctx sdk.Context, denom string) bool
 	GetBalance(ctx sdk.Context, addr sdk.AccAddress, denom string) sdk.Coin
 	SpendableCoins(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
+
+	// used for genesis conversion
+	IterateAllBalances(ctx sdk.Context, cb func(address sdk.AccAddress, coin sdk.Coin) (stop bool))
 }
 
 // EVMKeeper defines the expected EVM keeper interface used on erc20
